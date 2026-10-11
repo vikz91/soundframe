@@ -4,6 +4,8 @@ Status: Locked product decisions, agreed on 12 October 2026.
 
 Audio2Video converts an audio file and cover artwork into a video with optional text, lyrics, and audio-reactive visualisations. v0 runs media processing locally in the browser, supports desktop and capable mobile devices, and provides local downloads without application accounts.
 
+These decisions define the target product. As of 12 October 2026, `/create` implements real local-media validation, playback, Canvas preview, lyrics, and settings; video export and generated-video downloads remain pending. `/prototype` provides the separate simulated experience. See the [implementation tracker](../TODO.md) for verified results and release gaps.
+
 ## User flow
 
 Choose files → pick a visual mode → customise → preview → export → download.
@@ -95,4 +97,4 @@ Release requires evidence of:
 - Successful local downloads that play with audio on the tested devices.
 - Settings import and export that preserve the supported preferences and reject invalid presets.
 
-These are acceptance requirements, not claims of implemented or tested behaviour. Input file-size limits, the exact rendering pipeline, and the supported device baseline must be established during implementation and benchmarking.
+These are acceptance requirements, not claims of complete release verification. The input/preview stage currently applies conservative bounds of 64 MiB for audio and 12 MiB, 16 million pixels, and 8192 pixels per side for artwork. Desktop boundary fixtures have been checked; the supported device baseline, mobile calibration, encoding path, and complete export memory budget still require benchmarking.

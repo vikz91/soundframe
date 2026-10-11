@@ -37,7 +37,9 @@ Snapshot: 12 October 2026. Versions below are declared requirements from `packag
 
 The `semver` development dependency (`^7.8.5`) supplies standard version validation and increments for commit tooling.
 
-Bun is pinned by `packageManager` to `bun@1.4.0`. Browser media dependencies are `@ffmpeg/ffmpeg` (`^0.12.15`), `@ffmpeg/core` (`^0.12.10`, single-threaded), and `@ffmpeg/util` (`^0.12.2`). Use the shared [FFmpeg wrapper and hook](FFMPEG.md); do not create engines in individual components. `bun run test:media` covers its lifecycle with mocks. The full media pipeline and automated browser suite remain implementation work. Commit tooling has a separate regression suite, `bun run test:hooks`.
+Bun is pinned by `packageManager` to `bun@1.4.0`. Browser media dependencies are `@ffmpeg/ffmpeg` (`^0.12.15`), `@ffmpeg/core` (`^0.12.10`, single-threaded), and `@ffmpeg/util` (`^0.12.2`). Use the shared [FFmpeg wrapper and hook](FFMPEG.md); do not create engines in individual components. The real editor validates and previews local media at `/create`; `/prototype` remains sample-only. Video encoding integration and an automated browser suite remain implementation work.
+
+`bun run test:media` covers FFmpeg/file lifecycles, real-input validators, capabilities, audio analysis, the shared Canvas painter, LRC, and strict JSON settings. Browser resources and Canvas operations are mocked in these tests; see [recorded browser verification](../TODO.md#completed-real-media-inputs-and-composition) for real-file evidence. `bun run test:prototype` covers sample session state, simulated export/expiry, and picker overrides. Commit tooling has a separate regression suite, `bun run test:hooks`; `bun run check` includes all these suites and tooling regression tests.
 
 ## Linting and formatting
 

@@ -113,6 +113,7 @@ export function LyricsControls({
           ) : null}
           <TextareaField
             label="Timed lyrics"
+            maxLength={20000}
             value={text}
             onChange={(event) => onTextChange(event.target.value)}
             placeholder="[00:12.00] Let the colour carry you"
@@ -124,6 +125,7 @@ export function LyricsControls({
         <TabsContent value="plain" className="pt-4">
           <TextareaField
             label="Plain lyrics"
+            maxLength={20000}
             value={text}
             onChange={(event) => onTextChange(event.target.value)}
             hint="Plain lyrics appear as static text."

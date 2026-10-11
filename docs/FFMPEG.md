@@ -1,5 +1,7 @@
 # Browser FFmpeg wrapper
 
+The shared wrapper is implemented, but the real `/create` editor currently performs local validation, playback, and Canvas preview through browser APIs. It does not invoke FFmpeg for preview, and real video export is disabled. `/prototype` simulates export without loading the engine. See the [implemented preview stage](MEDIA_PIPELINE_ARCHITECTURE.md#implemented-input-and-preview-stage) and [remaining encoding work](../TODO.md#next-real-encoding-and-output-lifecycle).
+
 Use `useFFmpeg` inside a Client Component. Mounting a hook does not load WASM. `load()` optionally warms the engine; `run()` loads it automatically. All hooks share one lazy single-threaded engine and the same status/progress/error snapshot. Sequential jobs reuse the worker; overlapping jobs reject with a busy error.
 
 ```tsx
@@ -48,6 +50,6 @@ Each job gets an isolated virtual directory. Use the provided input/output paths
 
 Assets are copied from the installed packages to ignored `public/ffmpeg/` during `prepare`, `dev`, and `build`. `bun run ffmpeg:assets` refreshes them manually. The wrapper imports these local ESM modules at runtime to avoid Turbopack's inability to resolve the package's dynamic worker URL. Vercel serves these static assets from the same origin; no CDN or server encoder is required. The single-threaded core needs modern Web Workers and WebAssembly, without SharedArrayBuffer or isolation headers. Keep the page open and foregrounded on mobile.
 
-`bun run test:media` covers lifecycle and cleanup with a mocked engine. Full seven-minute exports, mobile memory/performance, Canvas composition, input validation, and download retention are separate pipeline work; installing this wrapper does not establish those release gates.
+`bun run test:media` covers wrapper lifecycle and cleanup with a mocked engine, plus media validation, capability probes, deterministic Canvas operations, LRC parsing, settings, and audio-analysis lifecycles. Real input validation and Canvas preview also have desktop browser evidence. Full seven-minute exports, encoded-frame/audio synchronisation, mobile memory/performance, and real generated-video retention remain release gates; wrapper tests do not establish them.
 
 API reference: [FFmpeg.wasm](https://ffmpegwasm.netlify.app/docs/api/ffmpeg/classes/ffmpeg/).

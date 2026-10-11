@@ -24,39 +24,53 @@ The v0 goal is a free tool for desktop and capable mobile browsers, hosted on Ve
 
 ## Project status
 
-**In active development.** The Next.js foundation, development checks, and shared FFmpeg.wasm wrapper/hook are implemented. The complete editor and export experience remain in development.
+**Local media preview is implemented; video export remains in development.** `/create` accepts real audio and artwork, plays the selected audio, renders Cover/Spectrum/Lighting previews, displays plain or timed LRC lyrics, and imports/exports JSON settings. The separate `/prototype` route uses sample media and simulated export/download actions.
 
-The features below describe the agreed v0 scope, not a released or fully verified converter. See the [product decisions](docs/V0_DECISIONS.md) and [media architecture](docs/MEDIA_PIPELINE_ARCHITECTURE.md) for the implementation and release criteria.
+The shared FFmpeg.wasm wrapper is implemented, but it is not yet connected to video export in the real editor. See the [TODO tracker](TODO.md), [product decisions](docs/V0_DECISIONS.md), and [media architecture](docs/MEDIA_PIPELINE_ARCHITECTURE.md) for remaining work and release criteria.
+
+On 12 October 2026, `bun run check` passed with 104 tests and the production build passed. Desktop browser checks covered real files, playback, seeking, lyrics, settings round trips, and input boundary/error cases; a 390 px viewport had no horizontal overflow. [Verification details and screenshots](TODO.md#completed-real-media-inputs-and-composition) distinguish browser evidence from mocked lifecycle/rendering tests. Physical mobile performance and encoded-video correctness remain unverified.
 
 ## The workflow
 
 **Choose files → customise → preview → export → download**
 
-Once the editor is available:
+Available now at `/create`:
 
-1. Select an audio file up to **seven minutes** long and a JPG or PNG cover image.
+1. Select or drop an audio file up to **seven minutes** long and a JPG or PNG cover image.
 2. Choose **Cover**, **Spectrum**, or **Lighting** mode.
 3. Add optional song details, plain lyrics, or timed LRC lyrics; adjust colours and typography.
-4. Preview the composition, then export **MP4** or **WebM** with the audio included.
-5. Download locally. Export settings as JSON to reuse them later.
+4. Play, pause, seek, and adjust volume while previewing the composition.
+5. Export settings as JSON to reuse them later. Importing settings requires confirmation and preserves the selected audio and artwork.
 
-| Capability      | v0 target                                                          |
-| --------------- | ------------------------------------------------------------------ |
-| Audio input     | MP3, M4A, WAV, or the audio track from MP4                         |
-| Artwork         | JPG or PNG                                                         |
-| Visuals         | Cover artwork, sound bars, or audio-reactive lighting              |
-| Text            | Song title, album, artists, website, and optional lyrics           |
-| Video           | Landscape, **568 × 320**, **30 fps**, up to seven minutes          |
-| MP4             | H.264 video with AAC audio                                         |
-| WebM            | VP8 video with Opus audio                                          |
-| Presets         | Versioned JSON settings; audio and artwork are selected separately |
-| Export controls | One export at a time, progress, approximate ETA, and cancellation  |
+Real video export is visibly disabled. The remaining workflow will encode **MP4** or **WebM** with audio and provide local video downloads.
+
+| Capability     | Current implementation or remaining target                                   |
+| -------------- | ---------------------------------------------------------------------------- |
+| Audio input    | MP3, M4A, WAV, or the audio track from MP4; actual contents/decode validated |
+| Artwork        | JPG or PNG; actual dimensions/decode validated                               |
+| Visuals        | Cover artwork, frequency-driven Spectrum, and waveform-driven Lighting       |
+| Text           | Song title, album, artist, website, static lyrics, and timed LRC             |
+| Canvas preview | **568 × 320**, absolute frame-index timeline at **30 fps**                   |
+| Presets        | Strict version-1 JSON settings; media files are selected separately          |
+| MP4 target     | H.264 video with AAC audio; encoding pending                                 |
+| WebM target    | VP8 video with Opus audio; encoding pending                                  |
+| Export target  | Up to seven minutes, one export at a time, progress, ETA, and cancellation   |
+
+### Input limits and lyrics
+
+Audio must be non-empty, at most **64 MiB**, browser-decodable, and have a finite positive duration of at most **420 seconds**. MP4 video is ignored; validation and preview use the audio duration even when the video is longer.
+
+Artwork must be non-empty and at most **12 MiB**, **16 million pixels**, and **8192 pixels per side**. JPEG orientation can swap decoded dimensions. These conservative bounds have desktop boundary coverage; they are not a verified mobile memory budget.
+
+Plain and timed lyrics are limited to **20,000 characters**. LRC accepts timestamps such as `[00:03]` or `[00:03.125]`, repeated timestamps on a line, metadata tags, and one signed millisecond offset between -420000 and 420000. Positive offset advances cues; equal timestamps use the last source occurrence. Empty timed cues clear the text. Enhanced word timing is unsupported. Imported `.lrc` files must be non-empty and at most **256 KiB**.
+
+JSON settings must be non-empty and at most **128 KiB**, with the shape `{ "version": 1, "preferences": { ... } }`. The strict schema rejects unsupported versions, unknown keys, media references, and credentials. Song-detail fields are limited to **200 characters** each. See the [settings schema](lib/editor/settings.ts) for supported values.
 
 ### Privacy and device support
 
-The planned media pipeline runs locally using FFmpeg.wasm and its built-in worker. Canvas supplies the composition preview. Input media and generated videos are not uploaded to a server, and downloads do not use hosted links.
+The current editor reads and decodes selected media locally using browser APIs. Web Audio drives the visual effects, Canvas paints the preview, and JSON settings download locally. The planned encoder uses FFmpeg.wasm and its built-in worker; the real editor does not load that engine for preview. Server media uploads and hosted video links remain outside v0.
 
-Generated output remains available for repeat downloads until **Clear project**, page closure, or one hour after generation. The timer is best effort while the page runs; it cannot delete files already downloaded to your device.
+Real generated-video retention is pending. Its planned policy keeps output available for repeat downloads until **Clear project**, page closure, or one hour after generation. The timer is best effort while the page runs; it cannot delete files already downloaded to your device. The sample prototype simulates this lifecycle.
 
 Modern desktop and capable mobile browsers are the target. Keep the app open and in the foreground during export. Older or low-spec phones may be unsupported; mobile performance and complete seven-minute exports still require device testing.
 
@@ -71,7 +85,7 @@ bun install
 bun run dev
 ```
 
-Open [localhost:3000](http://localhost:3000). The development server reloads when you edit the application.
+Open [localhost:3000](http://localhost:3000), then use [the real editor](http://localhost:3000/create) or [the sample prototype](http://localhost:3000/prototype). The development server reloads when you edit the application.
 
 To check the production build locally:
 
@@ -90,21 +104,22 @@ The stack is **Next.js App Router**, **React 19**, **strict TypeScript 7.0.2**, 
 
 The TypeScript upgrade required no application-code or strict compiler-option changes. Tooling compatibility changes include the legacy compiler API and editor language-service plugins; Next.js uses the supported compiler CLI. See [TypeScript 7 upgrade notes](docs/AGENT_GUIDE.md#typescript-7-version-and-upgrade-notes) for versions, breaking changes, and editor setup.
 
-| Command                 | Purpose                                                                 |
-| ----------------------- | ----------------------------------------------------------------------- |
-| `bun run dev`           | Start the development server                                            |
-| `bun run check`         | Run lint, formatting, TypeScript, hook, media, and tooling tests        |
-| `bun run lint`          | Check Oxlint rules; warnings fail                                       |
-| `bun run lint:types`    | Generate route types, then run type-aware lint with tsgolint            |
-| `bun run typecheck`     | Generate route types, then check TypeScript without emitting JavaScript |
-| `bun run format:check`  | Check Oxfmt formatting                                                  |
-| `bun run test:hooks`    | Test commit tooling in temporary repositories                           |
-| `bun run test:media`    | Run media wrapper lifecycle regression tests                            |
-| `bun run test:tooling`  | Verify native, compatibility, and semantic lint rules                   |
-| `bun run ffmpeg:assets` | Refresh locally served FFmpeg runtime assets                            |
-| `bun run lint:fix`      | Apply supported Oxlint fixes                                            |
-| `bun run format`        | Format the repository with Oxfmt                                        |
-| `bun run build`         | Create a production build                                               |
+| Command                  | Purpose                                                                            |
+| ------------------------ | ---------------------------------------------------------------------------------- |
+| `bun run dev`            | Start the development server                                                       |
+| `bun run check`          | Run lint, formatting, TypeScript, hook, media, tooling, and prototype tests        |
+| `bun run lint`           | Check Oxlint rules; warnings fail                                                  |
+| `bun run lint:types`     | Generate route types, then run type-aware lint with tsgolint                       |
+| `bun run typecheck`      | Generate route types, then check TypeScript without emitting JavaScript            |
+| `bun run format:check`   | Check Oxfmt formatting                                                             |
+| `bun run test:hooks`     | Test commit tooling in temporary repositories                                      |
+| `bun run test:media`     | Test media validation, lifecycles, capabilities, composition, lyrics, and settings |
+| `bun run test:prototype` | Test sample-only session, export/expiry lifecycle, and picker overrides            |
+| `bun run test:tooling`   | Verify native, compatibility, and semantic lint rules                              |
+| `bun run ffmpeg:assets`  | Refresh locally served FFmpeg runtime assets                                       |
+| `bun run lint:fix`       | Apply supported Oxlint fixes                                                       |
+| `bun run format`         | Format the repository with Oxfmt                                                   |
+| `bun run build`          | Create a production build                                                          |
 
 ### Git hooks and versioning
 
@@ -161,6 +176,7 @@ The configured [CI workflow](.github/workflows/ci.yml) runs lint, formatting, Ty
 
 ## Documentation
 
+- [TODO tracker](TODO.md) — completed work, verification evidence, and remaining release gates.
 - [Contribution guide](CONTRIBUTING.md) — setup, checks, versioning, and pull requests.
 - [v0 product decisions](docs/V0_DECISIONS.md) — inputs, outputs, privacy, limits, and release requirements.
 - [Browser media architecture](docs/MEDIA_PIPELINE_ARCHITECTURE.md) — worker ownership, encoding paths, memory, and benchmarks.

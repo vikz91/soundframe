@@ -2,7 +2,7 @@
 
 Updated: 12 October 2026.
 
-The visual prototype is complete. The real local-media editor and video export pipeline remain in development. Checked items below describe implemented work; prototype verification does not establish production media readiness.
+The visual prototype and real local-media input/composition stage are implemented. Video encoding remains in development. Checked items below describe implemented work; preview verification does not establish exported-video or mobile release readiness.
 
 ## Completed foundations
 
@@ -17,9 +17,9 @@ The visual prototype is complete. The real local-media editor and video export p
 
 ## Completed visual prototype
 
-Implementation: [workspace](components/prototype/workspace.tsx), [session controller](lib/prototype/controller.ts), and [fixtures](lib/prototype/fixtures.ts).
+Implementation: [sample workspace](components/prototype/workspace.tsx) at `/prototype`, [session controller](lib/prototype/controller.ts), and [fixtures](lib/prototype/fixtures.ts). The Home retains explicit sample-only disclosures; `/create` now opens the real local-media editor.
 
-9. [x] Implement server-rendered `/` and `/create` route wrappers with the prototype disclosure on both pages.
+9. [x] Implement server-rendered Home and workspace route wrappers. The sample-only workspace now lives at `/prototype`; `/create` opens the real editor and discloses that video export is pending.
 10. [x] Add Home composition, workflow explanation, intended supported formats, Help, demo links, and the prototype entry action.
 11. [x] Keep Files, Create, Export, and Download in one mounted client workspace; selections and preferences survive view changes and reset on reload.
 12. [x] Gate Create/Export until valid sample audio and artwork are selected; visibly disable unavailable steps.
@@ -40,7 +40,7 @@ Implementation: [workspace](components/prototype/workspace.tsx), [session contro
 
 ## Prototype verification completed
 
-These results were obtained during the prototype implementation, before this documentation-only update.
+These historical results were obtained during the sample-prototype implementation, before the real local-media stage. Its workspace has since moved from `/create` to `/prototype`.
 
 27. [x] `bun run check` passed with 76 tests across the configured suites; focused controller and picker-override tests run through `bun run test:prototype`.
 28. [x] `bun run build` passed, including `/`, `/create`, and existing demo routes.
@@ -51,20 +51,22 @@ These results were obtained during the prototype implementation, before this doc
 33. [x] Confirm the production prototype has no native file inputs or audio/video elements and no browser warnings/errors in the checked journey.
 34. [x] Save screenshots of pages, mobile layouts, and modal/recovery states in [output/prototype](output/prototype/).
 
-## Next: real media inputs and composition
+## Completed: real media inputs and composition
 
-Reuse the existing controls and browser hooks. Preserve an explicit sample-only prototype while real media integration is incomplete.
+Implementation: [local editor](components/editor/workspace.tsx), [media validation](lib/local-media.ts), [composition](lib/editor/composition.ts), [LRC parser](lib/editor/lyrics.ts), and [settings](lib/editor/settings.ts). The sample-only prototype remains separate; real video export is visibly disabled.
 
-35. [ ] Connect production file selection and drag/drop to the shared loading lifecycle; preserve cancellation, replacement, and stale-result cleanup.
-36. [ ] Validate real MP3, M4A, WAV, and MP4 audio contents, decodability, finite duration, and the seven-minute limit; use only the audio track from MP4.
-37. [ ] Validate/decode JPG and PNG artwork; establish practical input-size and image-dimension limits through device testing.
-38. [ ] Add browser capability checks and actionable unsupported-device/input errors before conversion.
-39. [ ] Connect preview playback, seek, and volume to actual audio through `useAudioPlayback`; handle rejected playback and file replacement.
-40. [ ] Build a shared deterministic composition/timeline for Canvas preview and export, preserving the approved hierarchy and controls.
-41. [ ] Connect Spectrum and Lighting to real audio analysis, keeping audio samples and frame updates outside React state.
-42. [ ] Implement and test real LRC parsing, validation, and synchronised cues; retain static plain lyrics and define supported timestamp behavior.
-43. [ ] Ensure fonts, artwork, colours, metadata, and lyrics render consistently in preview and exported frames.
-44. [ ] Implement a versioned JSON settings schema with validation, import/export, and round-trip tests; exclude media files and credentials.
+35. [x] Connect production file selection and drag/drop to the shared loading lifecycle; preserve cancellation, replacement, and stale-result cleanup.
+36. [x] Validate real MP3, M4A, WAV, and MP4 audio contents, browser decodability, finite audio duration, and the seven-minute limit; MP4 contributes audio only.
+37. [x] Validate/decode JPG and PNG artwork, including rotated JPEG dimensions. Apply conservative 12 MiB, 16-million-pixel, and 8192-pixel-side limits before decoding. Desktop boundary fixtures passed; mobile calibration remains a release gate under items 58–59.
+38. [x] Probe single-thread WASM/workers, local files/blob URLs, Web Audio, Canvas, font loading, and colour support; show actionable errors before proceeding.
+39. [x] Connect actual audio playback, seek, and volume through `useAudioPlayback`; handle rejection, replacement, end-of-audio, and React ref reattachment.
+40. [x] Share one deterministic 568 × 320 / 30 fps Canvas renderer with an absolute frame-index timeline and explicit assets/audio samples for preview and future encoding.
+41. [x] Drive Spectrum from frequency samples and Lighting from waveform RMS; reuse analysis buffers and paint outside React state.
+42. [x] Parse and validate real LRC with repeated timestamps, up to three fractional digits, signed millisecond offset, stable equal-time ordering, empty cues, and seek lookup. Keep plain lyrics static; reject enhanced word timing.
+43. [x] Freeze loaded fonts, decoded artwork references, semantic colours, metadata, and lyric cues into a composition snapshot. Tests confirm identical preview/export draw operations for identical inputs; encoded-video verification remains pending under items 46 and 57.
+44. [x] Validate strict version-1 JSON settings, confirm replacement, import/export local files, and test round trips. Media references, credential keys, unsupported versions, and unknown fields are rejected.
+
+Verification for this stage on 12 October 2026: `bun run check` passed with 104 tests, and `bun run build` passed, including `/create` and `/prototype`. Desktop browser checks covered all four audio formats, both artwork formats, real playback, seeking to LRC cues, volume controls, settings download/import, invalid replacements, video-only MP4, renamed text, and overlong audio. Exact seven-minute MP3 and AAC/M4A fixtures passed; MP4 with longer video and shorter audio used the audio duration. Artwork acceptance/rejection was checked at 12 MiB and 16 million pixels. A 390 px viewport had no horizontal overflow. Screenshots are in [output/media-inputs](output/media-inputs/). Cancellation/resource tests and renderer equivalence tests use mocks; physical mobile performance, actual encoding, and exported-video synchronisation remain unverified.
 
 ## Next: real encoding and output lifecycle
 
@@ -93,7 +95,7 @@ Follow the [media architecture](docs/MEDIA_PIPELINE_ARCHITECTURE.md); choose the
 62. [ ] Recheck mobile layouts, themes, reduced motion, keyboard access, touch targets, and dialogs with real media states.
 63. [ ] Add focused regression coverage for the real pipeline; mocks and successful builds alone are insufficient release evidence.
 64. [ ] Run `bun run check`, `bun run build`, and integrated browser/device checks after production integration; retain evidence and screenshots.
-65. [ ] Update README status/workflow and developer documentation to describe the completed prototype, production readiness, and verified limits. The current README still describes the editor as pending.
+65. [x] Update README status/workflow and developer documentation for the completed sample prototype and real input/preview stage, conservative input limits, recorded verification, and pending production release gates. Keep them current as encoding and device validation progress.
 66. [ ] Verify Vercel production asset loading, capability behavior, and hosting allowances before an explicitly authorized release/deployment.
 
 ## Beyond v0

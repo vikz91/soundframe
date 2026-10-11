@@ -31,6 +31,8 @@ The compiler is TypeScript **7.0.2**. Use a TypeScript 7-compatible editor langu
 - Reuse the FFmpeg engine between jobs and release workers, listeners, timers, and object URLs on cancellation or disposal. See the [wrapper guide](docs/FFMPEG.md) and [media architecture](docs/MEDIA_PIPELINE_ARCHITECTURE.md).
 - Add regression tests when they protect changed behaviour. Use synthetic or public-domain media samples; do not commit private recordings or generated exports.
 
+Use `/create` for real media validation/playback/Canvas preview and `/prototype` for the sample-only simulated workflow. Real video export is disabled. Reuse [the existing input and composition modules](docs/MEDIA_PIPELINE_ARCHITECTURE.md#implemented-input-and-preview-stage), preserve the absolute frame-index timeline, and keep live analysis samples outside React state. The future encoder needs deterministic offline analysis and a bounded input bridge; do not accumulate a full raw frame sequence.
+
 ## Verify your work
 
 ```bash
@@ -39,9 +41,9 @@ bun run build
 bun audit
 ```
 
-`check` runs Oxlint syntax and type-aware checks, Oxfmt, TypeScript 7, commit-hook tests, media wrapper tests, and lint-rule regression tests. Run the build for changes to dependencies, bundling, configuration, or rendering. For documentation-only changes, run Oxfmt on the changed files and check their links.
+`check` runs Oxlint syntax and type-aware checks, Oxfmt, TypeScript 7, commit-hook tests, media validation/lifecycle/composition tests, lint-rule regression tests, and sample-prototype tests. Run the build for changes to dependencies, bundling, configuration, or rendering. For documentation-only changes, run Oxfmt on the changed files and check their links.
 
-Use `bun run lint:types`, `bun run test:tooling`, `bun run test:hooks`, or `bun run test:media` for focused checks. GitHub CI runs `bun test` to discover the repository's test suites, alongside syntax/type-aware lint, formatting, TypeScript, the production build, and an audit of locked dependencies.
+Use `bun run lint:types`, `bun run test:tooling`, `bun run test:hooks`, `bun run test:media`, or `bun run test:prototype` for focused checks. GitHub CI runs `bun test` to discover the repository's test suites, alongside syntax/type-aware lint, formatting, TypeScript, the production build, and an audit of locked dependencies.
 
 For browser and media changes, describe the devices, browser versions, formats, and flows actually tested. Check audio synchronisation, output playback, progress, cancellation, and cleanup when affected. Builds and mocked tests do not prove mobile performance or complete seven-minute exports. Record failures, checks not run, and reasons in the pull request.
 

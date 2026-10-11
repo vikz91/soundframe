@@ -1,10 +1,24 @@
 # Audioframe browser media pipeline architecture
 
-Status: Locked architecture direction, agreed on 12 October 2026. Implementation and device benchmarks remain pending.
+Status: Locked architecture direction, agreed on 12 October 2026. Local media validation and Canvas preview are implemented; video encoding integration and device benchmarks remain pending.
 
 The browser owns media validation, composition, encoding, and download. Use one shared, lazy FFmpeg.wasm engine and its built-in worker, reusing it across sequential exports while the editor is open. Remove each job's files after success; terminate the engine on cancellation, failure, or editor disposal. See the [wrapper API](FFMPEG.md). Introduce chunking only when the selected Canvas export path needs bounded frame batches; parallel chunk encoding requires evidence that it improves speed without unacceptable memory use.
 
 Product limits and retention rules remain defined in [v0 decisions](V0_DECISIONS.md): seven-minute audio, 568 × 320 at 30 fps, MP4/WebM output, desktop and capable mobile support, local downloads, and no server media uploads.
+
+## Implemented input and preview stage
+
+The real editor is [MediaWorkspace](../components/editor/workspace.tsx) at `/create`. `/prototype` retains the sample-only workspace and simulated output lifecycle. Real video export is disabled; the preview does not load FFmpeg.
+
+- [Local media validation](../lib/local-media.ts) checks byte limits, container signatures, audio-track presence, browser decode, and finite positive audio duration up to 420 seconds. MP4 duration comes from decoded audio rather than its video; preliminary audio media-header checks allow bounded AAC padding while the decoded-duration limit stays strict. Artwork headers are checked before image decoding, including JPEG orientation-compatible dimensions.
+- [Capability checks](../lib/media-capabilities.ts) probe single-thread WASM, a blob worker, local files/blob URLs, Web Audio, Canvas drawing, font loading, and CSS colour support. Passing this gate does not establish encoding speed or mobile memory safety.
+- Shared file/playback hooks handle cancellation, replacement, stale-result disposal, seek, volume, and rejected playback. The editor reuses [LocalAudioAnalyser](../app/demo/viz/audio-analysis.ts); frequency and waveform buffers are reused. Samples and frame painting stay outside React state.
+- [Composition preparation](../lib/editor/composition.ts) loads selected fonts and freezes preferences, colours, metadata, and parsed cues into a snapshot holding the decoded artwork reference. The caller owns artwork lifetime. `renderComposition` paints 568 × 320 frames from an absolute integer `frameIndex`, with time equal to `frameIndex / 30`. Spectrum consumes frequency samples; Lighting consumes waveform RMS. Live preview analysis is not yet an offline export-analysis implementation.
+- [LRC parsing](../lib/editor/lyrics.ts) provides deterministic lookup through forward/backward seeking. [Settings validation](../lib/editor/settings.ts) uses a strict version-1 schema with media-free preferences, confirmed replacement, and local JSON import/export.
+
+Preview and future encoding share the painter contract. Mocked Canvas tests verify identical draw operations for identical snapshots, frame indices, and analysis inputs; they do not prove encoded-pixel or audio/video equivalence. The offline analysis source, bounded frame-to-encoder bridge, and actual export validation remain implementation work.
+
+Current bounds are 64 MiB per audio file; 12 MiB, 16 million pixels, and 8192 pixels per side for artwork; 20,000 characters for lyrics; 256 KiB per LRC file; and 128 KiB per JSON preset. These are conservative allocation guards, not measured peak-memory budgets. See [stage verification](../TODO.md#completed-real-media-inputs-and-composition) for desktop browser evidence and remaining device gates.
 
 ## Locked decisions
 

@@ -1,12 +1,12 @@
 import type { Metadata } from 'next'
-import { PrototypeWorkspace } from '@/components/prototype/workspace'
+import { MediaWorkspace } from '@/components/editor/workspace'
 
 export const metadata: Metadata = {
-  title: 'Create — visual prototype',
+  title: 'Create — local media editor',
   description:
-    'Explore Audioframe with sample media, customisable visuals, and simulated export. No real media is processed.'
+    'Preview your local audio and artwork with customisable visuals and lyrics. Video export is in development.'
 }
 
 export default function CreatePage() {
-  return <PrototypeWorkspace />
+  return <MediaWorkspace />
 }

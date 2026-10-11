@@ -30,7 +30,7 @@ export function HomePrototype() {
           <Button ref={helpTrigger} variant="ghost" onClick={() => setHelpOpen(true)}>
             Help
           </Button>
-          <Button nativeButton={false} role="link" variant="outline" render={<Link href="/create" />}>
+          <Button nativeButton={false} role="link" variant="outline" render={<Link href="/prototype" />}>
             Try the prototype <ArrowRightIcon aria-hidden="true" />
           </Button>
         </nav>
@@ -59,11 +59,14 @@ export function HomePrototype() {
             samples.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
-            <Button nativeButton={false} role="link" size="lg" render={<Link href="/create" />}>
+            <Button nativeButton={false} role="link" size="lg" render={<Link href="/prototype" />}>
               Try the prototype <ArrowRightIcon aria-hidden="true" />
             </Button>
             <Button nativeButton={false} role="link" size="lg" variant="outline" render={<Link href="/demo" />}>
               Explore existing demos
+            </Button>
+            <Button nativeButton={false} role="link" size="lg" variant="outline" render={<Link href="/create" />}>
+              Preview your own files
             </Button>
           </div>
           <p className="mt-5 max-w-lg text-sm leading-6 text-muted-foreground">
