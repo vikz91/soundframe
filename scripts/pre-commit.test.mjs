@@ -46,6 +46,7 @@ function setup(version = '0.1.0') {
   mkdirSync(join(root, '.husky/_'), { recursive: true })
   copyFileSync(join(source, 'scripts/pre-commit.mjs'), join(root, 'scripts/pre-commit.mjs'))
   copyFileSync(join(source, '.husky/pre-commit'), join(root, '.husky/pre-commit'))
+  copyFileSync(join(source, '.oxfmtrc.json'), join(root, '.oxfmtrc.json'))
   symlinkSync(join(source, 'node_modules'), join(root, 'node_modules'), 'dir')
   writeFileSync(join(root, '.gitignore'), 'node_modules\n')
   writeFileSync(
@@ -72,6 +73,36 @@ function setup(version = '0.1.0') {
   git(root, 'add', 'change.txt')
   return root
 }
+
+function enableRealStagedChecks(root) {
+  for (const file of ['.lintstagedrc.json', '.oxlintrc.json']) copyFileSync(join(source, file), join(root, file))
+  const data = manifest(root)
+  data.scripts['lint:staged'] = 'lint-staged'
+  writeFileSync(join(root, 'package.json'), JSON.stringify(data, null, 2) + '\n')
+  git(root, 'add', 'package.json', '.lintstagedrc.json', '.oxlintrc.json')
+}
+
+test('real staged checks format code with Oxfmt before the version bump', () => {
+  const root = setup()
+  enableRealStagedChecks(root)
+  writeFileSync(join(root, 'change.ts'), 'export const answer=42;\n')
+  git(root, 'add', 'change.ts')
+  const result = run(root, ['git', 'commit', '-qm', 'Formatted hooked commit'])
+  expect(result.status).toBe(0)
+  expect(git(root, 'show', 'HEAD:change.ts')).toBe('export const answer = 42\n')
+  expect(manifest(root, 'HEAD').version).toBe('0.1.1')
+})
+
+test('a real Oxlint violation blocks the commit and version bump', () => {
+  const root = setup()
+  enableRealStagedChecks(root)
+  writeFileSync(join(root, 'change.ts'), 'export const answer: any = 42\n')
+  git(root, 'add', 'change.ts')
+  const result = run(root, ['git', 'commit', '-qm', 'Invalid hooked commit'])
+  expect(result.status).not.toBe(0)
+  expect(manifest(root).version).toBe('0.1.0')
+  expect(manifest(root, 'HEAD').version).toBe('0.1.0')
+})
 
 test.each([
   ['patch', '0.1.1'],

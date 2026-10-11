@@ -1,7 +1,7 @@
 import { execFileSync, spawnSync } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
 import process from 'node:process'
-import { format, resolveConfig } from 'prettier'
+import { format } from 'oxfmt'
 import { gt, inc, valid } from 'semver'
 
 function git(...args) {
@@ -47,10 +47,10 @@ async function preCommit() {
   const original = readFileSync('package.json', 'utf8')
   const manifest = JSON.parse(git('show', ':package.json'))
   manifest.version = next
-  const content = await format(JSON.stringify(manifest), {
-    ...(await resolveConfig('package.json')),
-    filepath: 'package.json'
-  })
+  const options = JSON.parse(readFileSync('.oxfmtrc.json', 'utf8'))
+  const { code: content, errors } = await format('package.json', JSON.stringify(manifest), options)
+  if (errors.length > 0)
+    throw new Error(`Cannot format package.json: ${errors.map((error) => error.message).join('; ')}`)
 
   writeFileSync('package.json', content)
   try {

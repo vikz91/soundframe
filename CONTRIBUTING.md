@@ -37,9 +37,9 @@ bun run build
 bun audit
 ```
 
-`check` runs lint, formatting, TypeScript, commit-hook tests, and media wrapper tests. Run the build for changes to dependencies, bundling, configuration, or rendering. For documentation-only changes, run Prettier on the changed files and check their links.
+`check` runs Oxlint syntax and type-aware checks, Oxfmt, TypeScript 7, commit-hook tests, media wrapper tests, and lint-rule regression tests. Run the build for changes to dependencies, bundling, configuration, or rendering. For documentation-only changes, run Oxfmt on the changed files and check their links.
 
-Use `bun run test:hooks` or `bun run test:media` for focused checks. GitHub CI runs `bun test` to discover the repository's test suites, alongside lint, formatting, TypeScript, the production build, and an audit of locked dependencies.
+Use `bun run lint:types`, `bun run test:tooling`, `bun run test:hooks`, or `bun run test:media` for focused checks. GitHub CI runs `bun test` to discover the repository's test suites, alongside syntax/type-aware lint, formatting, TypeScript, the production build, and an audit of locked dependencies.
 
 For browser and media changes, describe the devices, browser versions, formats, and flows actually tested. Check audio synchronisation, output playback, progress, cancellation, and cleanup when affected. Builds and mocked tests do not prove mobile performance or complete seven-minute exports. Record failures, checks not run, and reasons in the pull request.
 

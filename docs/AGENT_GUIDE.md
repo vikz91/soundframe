@@ -23,19 +23,37 @@ Snapshot: 12 October 2026. Versions below are declared requirements from `packag
 | `zod`                              | `^4.6.6`         | Prefer for runtime validation of imported settings and structured user input. File metadata alone is not media validation. |
 | `tailwindcss`                      | `^4`             | Use existing CSS variables and utilities. Do not introduce a Tailwind v3 configuration pattern.                            |
 | `@tailwindcss/turbopack`           | `^4`             | Already configured for CSS in `next.config.ts`; preserve the setup unless the task requires changing it.                   |
-| `typescript`                       | `^5`             | Strict typing; use the existing no-emit check and avoid weakening compiler options.                                        |
+| `typescript`                       | `^7.0.2`         | Native compiler; strict typing and no-emit checks. Keep Next.js CLI type checking enabled.                                 |
 | `@types/node`                      | `^20`            | Node typings for tooling; availability of a type does not make an API available in a browser.                              |
 | `@types/react`, `@types/react-dom` | `^19` each       | Match the installed React type APIs; do not copy older component signatures blindly.                                       |
-| `eslint`                           | `^9`             | Flat configuration in `eslint.config.mjs`; warnings fail the checks.                                                       |
-| `eslint-config-next`               | `16.4.0`         | Core Web Vitals and TypeScript rules matching Next.js.                                                                     |
-| `eslint-config-prettier`           | `^10.1.8`        | Disables conflicting formatting rules; Prettier owns formatting.                                                           |
-| `prettier`                         | `^3.9.10`        | Follow `.prettierrc` and `.prettierignore`; format only files changed for the task.                                        |
+| `oxlint`                           | `^1.87.0`        | Uses `.oxlintrc.json`; warnings fail. Preserve native rules and JavaScript compatibility rules when editing configuration. |
+| `oxlint-tsgolint`                  | `^7.0.2004`      | Type-aware backend using TypeScript 7.0.2 semantics; invoked by `bun run lint:types`.                                      |
+| `oxfmt`                            | `^0.72.0`        | Uses `.oxfmtrc.json`; preserves the existing style and ignores generated/vendor files. Format only changed files.          |
+| `@next/eslint-plugin-next`         | `16.4.0`         | Oxlint compatibility plugin for the internal-navigation rule not yet implemented natively.                                 |
+| `eslint-plugin-react`              | `^7.37.5`        | Oxlint compatibility plugin for deprecated React APIs and missing class-component render returns.                          |
+| `eslint-plugin-react-hooks`        | `^7.1.1`         | Oxlint compatibility plugin for React Compiler configuration and gating validation.                                        |
 | `husky`                            | `^9.1.7`         | Uses `.husky/pre-commit` and `.husky/pre-push`; `bun run prepare` installs hooks.                                          |
 | `lint-staged`                      | `^17.6.0`        | Fixes supported staged files before commit; do not invoke it merely to inspect an unrelated dirty index.                   |
 
 The `semver` development dependency (`^7.8.5`) supplies standard version validation and increments for commit tooling.
 
 Bun is pinned by `packageManager` to `bun@1.4.0`. Browser media dependencies are `@ffmpeg/ffmpeg` (`^0.12.15`), `@ffmpeg/core` (`^0.12.10`, single-threaded), and `@ffmpeg/util` (`^0.12.2`). Use the shared [FFmpeg wrapper and hook](FFMPEG.md); do not create engines in individual components. `bun run test:media` covers its lifecycle with mocks. The full media pipeline and automated browser suite remain implementation work. Commit tooling has a separate regression suite, `bun run test:hooks`.
+
+## Linting and formatting
+
+Oxlint replaces the ESLint command, and Oxfmt replaces Prettier. `.oxlintrc.json` preserves the previous Next.js, React Hooks, accessibility, and TypeScript rule severities. The migration enables 79 native rules plus five JavaScript compatibility rules: `next-compat/no-location-assign-relative-destination`, `react-compat/no-deprecated`, `react-compat/require-render-return`, `hooks-compat/config`, and `hooks-compat/gating`. The former JSX usage rules are handled by native JSX-aware unused-variable checks and React's automatic JSX transform.
+
+JavaScript plugin support is currently alpha upstream. Keep these compatibility plugins until native equivalents are verified; do not silently drop rules. Their ESLint peer dependency may remain transitive, but no ESLint CLI or TypeScript ESLint parser is used by the project's lint command. These five checks do not depend on the TypeScript compiler API.
+
+`bun run lint:types` generates Next.js route types and runs `.oxlintrc.type-aware.json`, which extends the syntax configuration and enables tsgolint. Eight semantic rules apply only to `ts`, `tsx`, `mts`, and `cts` files: `no-floating-promises`, `no-misused-promises`, `await-thenable`, and `no-unsafe-assignment`, `no-unsafe-call`, `no-unsafe-member-access`, `no-unsafe-return`, `no-unsafe-argument`. JavaScript scripts and test mocks retain syntax checks. The type-aware profile explicitly repeats the React version setting because Oxlint does not inherit it through `extends`; update both configurations when React changes.
+
+TypeScript is upgraded to `^7.0.2`. `bun run typecheck` retains the separate `tsc --noEmit --incremental false` check. Next.js 16.4 uses the compiler CLI by default; do not set `experimental.useTypeScriptCli` to `false`, since TypeScript 7 does not expose the legacy compiler API. No application code or strict compiler options needed changes for this upgrade.
+
+For editor support, use a TypeScript 7-compatible language server. The legacy Next.js TypeScript language-service plugin does not run in the native TypeScript 7 language server; the `plugins` entry in `tsconfig.json` is retained because Next.js manages it. CLI type checks and production builds are verified separately from editor features. See Microsoft's [TypeScript 7 editor and plugin guidance](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/#editor-experience); no editor extensions are installed automatically.
+
+`.oxfmtrc.json` retains no semicolons, single quotes, two-space indentation, no trailing commas, and a 120-column width. Package-key sorting is explicitly disabled to preserve existing manifest ordering. Generated assets and vendored skills remain ignored. lint-staged runs Oxlint then Oxfmt for code, and Oxfmt for supported document/config formats. Version bumping formats the manifest through Oxfmt's API before staging it.
+
+CI runs separate syntax and type-aware lint jobs. Pre-push calls `check`, which includes both profiles and the compiler check. Pre-commit keeps fast syntax checks and formatting. `bun run test:tooling` verifies native/compatibility rules, automatic JSX variable usage, all eight semantic rules, and TypeScript 7 diagnostic reporting. Hook tests also exercise real Oxlint/Oxfmt staged checks in temporary Git repositories. For editor diagnostics and formatting, use the [Oxc editor integration](https://oxc.rs/docs/guide/usage/linter/editors.html).
 
 ## Local documentation lookup
 
@@ -92,7 +110,7 @@ Existing `experimental.agentFeedback` is enabled in `next.config.ts`. Preserve t
 4. Run `bun run check` once on the final integrated code. Run `bun run build` when production compilation is affected.
 5. Report what changed, checks that actually ran, and remaining limits.
 
-Use `bun run lint`, `bun run format:check`, `bun run typecheck`, and `bun run test:hooks` independently during editing. Type checking generates route declarations and runs `tsc --noEmit --incremental false`; it does not generate application JavaScript or prove runtime correctness. Git hooks enforce staged checks and an automatic version bump before commit, and the full check before push.
+Use `bun run lint`, `bun run lint:types`, `bun run format:check`, `bun run typecheck`, and `bun run test:hooks` independently during editing. Type checking generates route declarations and runs TypeScript 7 `tsc --noEmit --incremental false`; it does not generate application JavaScript or prove runtime correctness. Git hooks enforce staged syntax checks and an automatic version bump before commit, and the full check before push.
 
 For media work, use the release criteria in `V0_DECISIONS.md`: complete exports, synchronisation, playback, cancellation, cleanup, and representative mobile devices. Mocked output, a working preview, and a successful type check do not prove those results.
 

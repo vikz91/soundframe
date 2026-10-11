@@ -86,23 +86,27 @@ Install, development, and build scripts copy the installed FFmpeg runtime assets
 
 ## Development
 
-The stack is **Next.js App Router**, **React 19**, **strict TypeScript**, **Tailwind CSS 4**, and **FFmpeg.wasm**. Browser processing uses a single-threaded core as the compatibility baseline; additional workers or multi-threading require profiling and capability checks.
+The stack is **Next.js App Router**, **React 19**, **strict TypeScript 7**, **Tailwind CSS 4**, and **FFmpeg.wasm**. Browser processing uses a single-threaded core as the compatibility baseline; additional workers or multi-threading require profiling and capability checks.
 
 | Command                 | Purpose                                                                 |
 | ----------------------- | ----------------------------------------------------------------------- |
 | `bun run dev`           | Start the development server                                            |
-| `bun run check`         | Run lint, formatting, TypeScript, hook tests, and media wrapper tests   |
-| `bun run lint`          | Check ESLint rules; warnings fail                                       |
+| `bun run check`         | Run lint, formatting, TypeScript, hook, media, and tooling tests        |
+| `bun run lint`          | Check Oxlint rules; warnings fail                                       |
+| `bun run lint:types`    | Generate route types, then run type-aware lint with tsgolint            |
 | `bun run typecheck`     | Generate route types, then check TypeScript without emitting JavaScript |
-| `bun run format:check`  | Check Prettier formatting                                               |
+| `bun run format:check`  | Check Oxfmt formatting                                                  |
 | `bun run test:hooks`    | Test commit tooling in temporary repositories                           |
 | `bun run test:media`    | Run media wrapper lifecycle regression tests                            |
+| `bun run test:tooling`  | Verify native, compatibility, and semantic lint rules                   |
 | `bun run ffmpeg:assets` | Refresh locally served FFmpeg runtime assets                            |
-| `bun run lint:fix`      | Apply supported ESLint fixes                                            |
-| `bun run format`        | Format the repository with Prettier                                     |
+| `bun run lint:fix`      | Apply supported Oxlint fixes                                            |
+| `bun run format`        | Format the repository with Oxfmt                                        |
 | `bun run build`         | Create a production build                                               |
 
 ### Git hooks and versioning
+
+Oxlint uses `.oxlintrc.json`; `.oxlintrc.type-aware.json` adds semantic TypeScript checks through tsgolint. Oxfmt uses `.oxfmtrc.json` and preserves the existing formatting style. Five Next.js/React rules use JavaScript compatibility plugins to retain checks that Oxlint does not implement natively. See the [tooling guide](docs/AGENT_GUIDE.md#linting-and-formatting) for compiler and editor support.
 
 `bun install` installs Husky hooks. If they are missing, run `bun run prepare`. Bun must be on your PATH.
 

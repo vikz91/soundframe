@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "semi": false,
+  "singleQuote": true,
+  "tabWidth": 2,
+  "trailingComma": "none",
+  "printWidth": 120,
+  "sortPackageJson": false,
+  "ignorePatterns": [
+    ".next/**",
+    "node_modules/**",
+    "out/**",
+    "dist/**",
+    "build/**",
+    "coverage/**",
+    ".vercel/**",
+    ".husky/_/**",
+    "next-env.d.ts",
+    "**/*.tsbuildinfo",
+    "bun.lock",
+    "public/ffmpeg/**",
+    ".agents/skills/**"
+  ]
+}

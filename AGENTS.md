@@ -27,9 +27,9 @@
 
 ## Verification and reporting
 
-- Run targeted checks during editing, then `bun run check` once at completion for code or tooling changes. It checks ESLint, Prettier, generated Next.js route types with `tsc --noEmit`, and hook/media regression tests.
+- Run targeted checks during editing, then `bun run check` once at completion for code or tooling changes. It checks Oxlint syntax and type-aware rules, Oxfmt, generated Next.js route types with TypeScript 7 `tsc --noEmit`, and hook/media/tooling regression tests.
 - For documentation-only changes, check formatting and links. Run `bun run build` for changes affecting production bundling, Next.js configuration, dependencies, or route rendering.
-- Add regression tests when they protect meaningful behavior. `bun run test:hooks` covers commit tooling; `bun run test:media` covers the shared FFmpeg wrapper lifecycle with mocks.
+- Add regression tests when they protect meaningful behavior. `bun run test:hooks` covers commit tooling; `bun run test:media` covers the shared FFmpeg wrapper lifecycle with mocks; `bun run test:tooling` covers native, compatibility, and semantic lint rules. Staged checks stay syntax-only; CI and pre-push run `bun run lint:types` too.
 - Authorized commits automatically bump the package version after staged checks pass. Use patch by default or `VERSION_BUMP=minor|major` when requested; do not create a separate version commit.
 - Verify UI and media changes in a browser when available. Compilation does not prove audio synchronisation, export playback, or mobile memory safety.
 - Never weaken checks to obtain a pass. State blockers and distinguish verified results from assumptions.
