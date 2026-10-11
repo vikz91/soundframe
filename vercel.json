@@ -1,8 +1,43 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": {
+    "deploymentEnabled": {
+      "**": false,
+      "main": true
+    }
+  },
   "framework": "nextjs",
   "bunVersion": "1.4.x",
   "installCommand": "npm exec --yes --package=bun@1.4.0 -- bun install --frozen-lockfile",
   "buildCommand": "npm exec --yes --package=bun@1.4.0 -- bun run build",
-  "devCommand": "npm exec --yes --package=bun@1.4.0 -- bun run dev"
+  "devCommand": "npm exec --yes --package=bun@1.4.0 -- bun run dev",
+  "ignoreCommand": "node scripts/vercel-ignore-build.mjs",
+  "headers": [
+    {
+      "source": "/:path*",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        }
+      ]
+    },
+    {
+      "source": "/ffmpeg/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, must-revalidate"
+        }
+      ]
+    }
+  ]
 }

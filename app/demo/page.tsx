@@ -39,12 +39,12 @@ export default function DemoPage() {
               ))}
             </div>
             <div className="px-2 py-5">
-              <p className="text-xs font-medium text-primary">01 / STATIC CANVAS SAMPLES</p>
+              <p className="text-xs font-medium text-primary">01 / ANIMATED CANVAS VISUALS</p>
               <h2 className="mt-2 font-heading text-2xl font-semibold">
                 Visualisations <span className="inline-block transition-transform group-hover:translate-x-1">↗</span>
               </h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                Spectrum, Orbit, and Electric. Bring a track for local playback.
+                Spectrum, Orbit, and Electric. Play a track and tune the motion.
               </p>
             </div>
           </Link>

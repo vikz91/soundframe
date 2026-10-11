@@ -1,7 +1,12 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useLocalFile } from '@/hooks/use-local-file'
+import { useFilePicker } from '@/hooks/use-file-picker'
+import { useDownload } from '@/hooks/use-download'
+import { readArtworkFile } from '@/lib/local-media'
 import { Button } from '@/components/ui/button'
+import { toast } from '@/components/ui/sonner'
 import { DemoHeader } from '../_components/demo-header'
 import { LocalAudioPlayer } from '../_components/local-audio-player'
 import { drawCover, type CoverDetails } from './draw-cover'
@@ -16,42 +21,12 @@ const emptyDetails: CoverDetails = { title: '', artist: '', album: '', website: 
 
 export function CoverDemo() {
   const [details, setDetails] = useState(emptyDetails)
-  const [artwork, setArtwork] = useState<{ image: HTMLImageElement; name: string } | null>(null)
-  const [reading, setReading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const input = useRef<HTMLInputElement>(null)
+  const { value: artwork, reading, error, select, clear } = useLocalFile(readArtworkFile)
+  const { inputRef, reset, onChange } = useFilePicker((file) => {
+    void select(file)
+  })
+  const { downloadCanvas } = useDownload()
   const canvas = useRef<HTMLCanvasElement>(null)
-  const reader = useRef<FileReader | null>(null)
-  const pendingImage = useRef<HTMLImageElement | null>(null)
-  const downloadURL = useRef<string | null>(null)
-
-  const release = useCallback(() => {
-    if (reader.current) {
-      reader.current.onload = null
-      reader.current.onerror = null
-      reader.current.abort()
-      reader.current = null
-    }
-    if (pendingImage.current) {
-      pendingImage.current.onload = null
-      pendingImage.current.onerror = null
-      pendingImage.current.src = ''
-      pendingImage.current = null
-    }
-  }, [])
-  useEffect(
-    () => () => {
-      release()
-      setReading(false)
-    },
-    [release]
-  )
-  useEffect(
-    () => () => {
-      if (downloadURL.current) URL.revokeObjectURL(downloadURL.current)
-    },
-    []
-  )
 
   useEffect(() => {
     const element = canvas.current
@@ -68,75 +43,18 @@ export function CoverDemo() {
     }
   }, [artwork, details])
 
-  function clearArtwork(clearInput = true) {
-    release()
-    setArtwork(null)
-    setReading(false)
-    setError(null)
-    if (clearInput && input.current) input.current.value = ''
-  }
-
-  function readArtwork(file: File) {
-    clearArtwork(false)
-    if (!/\.(jpe?g|png)$/i.test(file.name)) {
-      setError('Choose a JPG or PNG image.')
-      return
-    }
-    if (!file.size) {
-      setError('This image is empty. Choose another file.')
-      return
-    }
-    const current = new FileReader()
-    reader.current = current
-    setReading(true)
-    current.onerror = () => {
-      if (reader.current !== current) return
-      reader.current = null
-      setReading(false)
-      setError('We could not read this image. Please try another file.')
-    }
-    current.onload = () => {
-      if (reader.current !== current) return
-      reader.current = null
-      if (typeof current.result !== 'string') {
-        setReading(false)
-        setError('We could not read this image.')
-        return
-      }
-      const image = new Image()
-      pendingImage.current = image
-      image.onload = () => {
-        if (pendingImage.current !== image) return
-        pendingImage.current = null
-        image.onload = null
-        image.onerror = null
-        setArtwork({ image, name: file.name })
-        setReading(false)
-      }
-      image.onerror = () => {
-        if (pendingImage.current !== image) return
-        release()
-        setReading(false)
-        setError('This image cannot be opened. Try another JPG or PNG.')
-      }
-      image.src = current.result
-    }
-    current.readAsDataURL(file)
+  function clearArtwork() {
+    clear()
+    reset()
   }
 
   function downloadCover() {
     if (!canvas.current) return
-    canvas.current.toBlob((blob) => {
-      if (!blob || !canvas.current) return
-      if (downloadURL.current) URL.revokeObjectURL(downloadURL.current)
-      downloadURL.current = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.download = 'audioframe-cover.png'
-      link.href = downloadURL.current
-      document.body.append(link)
-      link.click()
-      link.remove()
-    }, 'image/png')
+    void downloadCanvas(canvas.current, 'audioframe-cover.png')
+      .then((saved) => {
+        if (saved) toast.success('Cover download started')
+      })
+      .catch(() => toast.error('The cover could not be saved. Please try again.'))
   }
 
   return (
@@ -166,15 +84,12 @@ export function CoverDemo() {
             Cover artwork
           </label>
           <input
-            ref={input}
+            ref={inputRef}
             id="cover-art"
             type="file"
             accept=".jpg,.jpeg,.png,image/jpeg,image/png"
             className="block w-full min-w-0 rounded-xl border bg-background p-3 text-xs text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-secondary file:px-3 file:py-2 file:font-medium file:text-secondary-foreground"
-            onChange={(event) => {
-              const file = event.currentTarget.files?.[0]
-              if (file) readArtwork(file)
-            }}
+            onChange={onChange}
           />
           <p className="mt-2 text-xs leading-5 text-muted-foreground">
             JPG or PNG. Images are cropped from the centre to fit 4:3.

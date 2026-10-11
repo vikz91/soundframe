@@ -47,13 +47,28 @@ JavaScript plugin support is currently alpha upstream. Keep these compatibility 
 
 `bun run lint:types` generates Next.js route types and runs `.oxlintrc.type-aware.json`, which extends the syntax configuration and enables tsgolint. Eight semantic rules apply only to `ts`, `tsx`, `mts`, and `cts` files: `no-floating-promises`, `no-misused-promises`, `await-thenable`, and `no-unsafe-assignment`, `no-unsafe-call`, `no-unsafe-member-access`, `no-unsafe-return`, `no-unsafe-argument`. JavaScript scripts and test mocks retain syntax checks. The type-aware profile explicitly repeats the React version setting because Oxlint does not inherit it through `extends`; update both configurations when React changes.
 
-TypeScript is upgraded to `^7.0.2`. `bun run typecheck` retains the separate `tsc --noEmit --incremental false` check. Next.js 16.4 uses the compiler CLI by default; do not set `experimental.useTypeScriptCli` to `false`, since TypeScript 7 does not expose the legacy compiler API. No application code or strict compiler options needed changes for this upgrade.
-
-For editor support, use a TypeScript 7-compatible language server. The legacy Next.js TypeScript language-service plugin does not run in the native TypeScript 7 language server; the `plugins` entry in `tsconfig.json` is retained because Next.js manages it. CLI type checks and production builds are verified separately from editor features. See Microsoft's [TypeScript 7 editor and plugin guidance](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/#editor-experience); no editor extensions are installed automatically.
-
 `.oxfmtrc.json` retains no semicolons, single quotes, two-space indentation, no trailing commas, and a 120-column width. Package-key sorting is explicitly disabled to preserve existing manifest ordering. Generated assets and vendored skills remain ignored. lint-staged runs Oxlint then Oxfmt for code, and Oxfmt for supported document/config formats. Version bumping formats the manifest through Oxfmt's API before staging it.
 
 CI runs separate syntax and type-aware lint jobs. Pre-push calls `check`, which includes both profiles and the compiler check. Pre-commit keeps fast syntax checks and formatting. `bun run test:tooling` verifies native/compatibility rules, automatic JSX variable usage, all eight semantic rules, and TypeScript 7 diagnostic reporting. Hook tests also exercise real Oxlint/Oxfmt staged checks in temporary Git repositories. For editor diagnostics and formatting, use the [Oxc editor integration](https://oxc.rs/docs/guide/usage/linter/editors.html).
+
+## TypeScript 7 version and upgrade notes
+
+`package.json` declares `typescript: ^7.0.2` and `oxlint-tsgolint: ^7.0.2004`; `bun.lock` currently resolves them to **7.0.2** and **7.0.2004** respectively. The tsgolint release embeds TypeScript **7.0.2** semantics; its version is not a separate TypeScript compiler release.
+
+The upgrade from TypeScript 5.9.3 required no application-code changes or relaxation of strict compiler options. Compiler checks, syntax/type-aware lint, the production build, and regression tests passed during the upgrade. Those results do not establish editor-plugin support or browser/device behavior.
+
+| Breaking change or new check    | Effect on this repository                                                                                                                                                                                                                           |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Legacy compiler API             | TypeScript 7 does not provide the old JavaScript compiler API. Keep `tsc --noEmit --incremental false` and Next.js CLI checking; do not set `experimental.useTypeScriptCli` to `false`. Check API compatibility before adding compiler-based tools. |
+| Editor language-service plugins | The native TypeScript 7 language server cannot run the legacy Next.js plugin. Keep the Next.js-managed `plugins` entry in `tsconfig.json`, but do not expect it to enable native editor diagnostics. Use a TypeScript 7-compatible language server. |
+| Removed configuration options   | `baseUrl`, `target: es5`, and `moduleResolution: node/node10/classic` are unsupported. Existing `ES2017`, `bundler`, and relative `paths` need no migration.                                                                                        |
+| Changed defaults                | `types` defaults to `[]`, `rootDir` to the project root, and `noUncheckedSideEffectImports` to `true`. Explicitly list needed global typings when adding them; keep side-effect imports resolvable.                                                 |
+| JavaScript/JSDoc analysis       | Some legacy constructor, prototype, and JSDoc patterns have changed. JavaScript scripts and mocks keep syntax-only linting; the new semantic rules apply to TypeScript files.                                                                       |
+| Additional semantic lint errors | Unhandled/misused promises, invalid `await`, and unsafe values now fail `lint:types`, CI, and pre-push. Staged commits retain syntax checks and formatting.                                                                                         |
+
+The five Next.js/React compatibility rules use syntax/React Compiler analysis rather than the TypeScript compiler API, so they remain enabled. They do not restore the legacy editor plugin.
+
+Use Microsoft's [TypeScript 7 release and editor guidance](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/) and [JavaScript/JSDoc compatibility notes](https://github.com/microsoft/typescript-go/blob/main/CHANGES.md), plus the [Next.js TypeScript guide](https://nextjs.org/docs/app/api-reference/config/typescript#using-typescript-7), when changing tooling. Editor extensions are not installed by this repository.
 
 ## Local documentation lookup
 

@@ -1,0 +1,132 @@
+/* Audioframe additions to the shadcn contract. Colour literals live only here.
+   Tailwind's existing spacing/type scales and the root font variables are reused. */
+@theme inline {
+  --color-selected: var(--selected);
+  --color-selected-foreground: var(--selected-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-muted: var(--success-muted);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-muted: var(--warning-muted);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-muted: var(--info-muted);
+  --color-danger-muted: var(--danger-muted);
+  --color-media: var(--media);
+  --color-media-foreground: var(--media-foreground);
+  --color-media-muted: var(--media-muted);
+  --color-media-accent: var(--media-accent);
+  --color-media-glow: var(--media-glow);
+  --color-overlay: var(--overlay);
+  --color-swatch-aqua: var(--swatch-aqua);
+  --color-swatch-mint: var(--swatch-mint);
+  --color-swatch-blue: var(--swatch-blue);
+  --color-swatch-violet: var(--swatch-violet);
+  --color-swatch-slate: var(--swatch-slate);
+  --radius-control: var(--control-radius);
+  --radius-panel: var(--panel-radius);
+  --radius-preview: var(--preview-radius);
+  --spacing-control: var(--control-size);
+  --spacing-control-sm: var(--control-size-sm);
+  --spacing-control-lg: var(--control-size-lg);
+  --spacing-slider-thumb: var(--slider-thumb-size);
+  --spacing-slider-track: var(--slider-track-size);
+  --container-editor: var(--editor-width);
+  --container-inspector: var(--inspector-width);
+  --shadow-panel: var(--panel-shadow);
+  --shadow-control: var(--control-shadow);
+  --aspect-video-frame: 568 / 320;
+  --text-page-title: clamp(2rem, 4vw, 3.5rem);
+  --text-page-title--line-height: 1.1;
+  --text-section-title: 1.5rem;
+  --text-section-title--line-height: 1.25;
+  --text-media-title: clamp(0.875rem, 3cqw, 2.25rem);
+  --text-media-detail: clamp(0.625rem, 1.8cqw, 1.125rem);
+}
+
+:root {
+  --brand: #08758b;
+  --brand-foreground: #ffffff;
+
+  --ring: var(--primary);
+  --selected: #eaf6f8;
+  --selected-foreground: #07576a;
+  --success: #14734a;
+  --success-foreground: #ffffff;
+  --success-muted: #edf8f1;
+  --warning: #86510c;
+  --warning-foreground: #ffffff;
+  --warning-muted: #fff6e5;
+  --info: var(--primary);
+  --info-foreground: var(--primary-foreground);
+  --info-muted: var(--selected);
+  --danger-muted: #fff0ee;
+  --media: #071b24;
+  --media-foreground: #f0fbfd;
+  --media-muted: #aecbd3;
+  --media-accent: #5eead4;
+  --media-glow: #153d48;
+  --overlay: #071b2470;
+  --swatch-aqua: #67d7e6;
+  --swatch-mint: #7bcda6;
+  --swatch-blue: #72a5ea;
+  --swatch-violet: #ab97e9;
+  --swatch-slate: #405966;
+  --control-radius: calc(var(--radius) * 1.2);
+  --panel-radius: calc(var(--radius) * 2.4);
+  --preview-radius: calc(var(--radius) * 1.6);
+  --control-size: 2.75rem;
+  --control-size-sm: 2.25rem;
+  --control-size-lg: 3rem;
+  --slider-thumb-size: 1.25rem;
+  --slider-track-size: 0.375rem;
+  --editor-width: 80rem;
+  --inspector-width: 20rem;
+  --panel-shadow: 0 2px 12px #071b2408;
+  --control-shadow: 0 1px 3px #071b241a;
+  --motion-duration: 160ms;
+  --motion-ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.dark {
+  --brand: #67d7e6;
+  --brand-foreground: var(--media);
+
+  --ring: var(--primary);
+  --selected: #123a45;
+  --selected-foreground: #a7e7ef;
+  --success: #88dab0;
+  --success-foreground: #092d1c;
+  --success-muted: #112f22;
+  --warning: #f1c675;
+  --warning-foreground: #332407;
+  --warning-muted: #35290f;
+  --danger-muted: #38221e;
+  --panel-shadow: 0 2px 12px #00000030;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration: 0ms;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@layer base {
+  [data-slot='button'],
+  [data-slot='input'],
+  [data-slot='textarea'],
+  [data-slot='tabs-trigger'],
+  [data-slot='slider-thumb'],
+  [data-slot='progress-indicator'] {
+    transition-timing-function: var(--motion-ease);
+  }
+}

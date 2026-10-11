@@ -1,0 +1,23 @@
+{
+  "title": "Audioframe",
+  "description": "Turn music, cover art, and lyrics into videos with audio-reactive visuals, right in your browser.",
+  "logoUrl": "/audioframe_logo.png",
+  "faviconUrl": "/favicon.ico",
+  "palette": {
+    "cobalt": "#245BFF",
+    "coral": "#F06449",
+    "teal": "#087F8C",
+    "background": "#F8F7F4",
+    "text": "#18181B"
+  },
+  "fonts": {
+    "heading": "Space Grotesk",
+    "body": "IBM Plex Sans",
+    "mono": "Geist Mono"
+  },
+  "header": {
+    "title": "Turn audio into video with Audioframe.",
+    "tagline": "Your sound. Your artwork. Your story.",
+    "status": "In development"
+  }
+}

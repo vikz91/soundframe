@@ -1,0 +1,12 @@
+[
+  {
+    "screen": "05-mobile-actions.png",
+    "purpose": "Align supported formats and illustrative ETA wording with v0.",
+    "prompt": "Use case: text-localization. Edit the attached Audioframe mobile workflow concept board. Preserve the full three-panel composition, styling, artwork, controls, spacing and all other text. Correct these factual product details only. In the first panel, artwork card metadata must read exactly \"1400 × 1400 · JPG, PNG\", removing WEBP. The audio support line must read exactly \"Audio formats: MP3, M4A, WAV, MP4\", removing FLAC and OGG and adding MP4. Keep \"Max length: 7 minutes\". The artwork support line must read exactly \"Artwork formats: JPG, PNG\", removing WEBP. Replace \"Recommended: 1:1 square image\" with \"MP4 uses its audio track only.\" In the third panel replace \"Rendering your music video. This will only take a moment.\" with \"Rendering your music video on this device.\" Change \"About 2 min remaining\" to \"Estimated: about 2 min remaining\" and preserve foreground note. Do not add any other features. Exactly JPG/PNG artwork and MP3/M4A/WAV/MP4 audio; no other formats anywhere in image. Preserve V0 CONCEPT label."
+  },
+  {
+    "screen": "04-export-and-download-v2.png",
+    "purpose": "Align navigation, remove unsupported size/compatibility claims, and show landscape output preview.",
+    "prompt": "Use case: precise-object-edit. Edit this four-panel Audioframe export storyboard. Preserve layout, visual design, existing artwork, panels and all controls. Change only: in every panel header navigation change \"Create / Visualise / Export\" to exactly \"Files / Create / Export\", keeping Export active. In the top-left panel replace the speculative format helper \"Best compatibility\" with \"MP4 video\" and replace \"Smaller file size\" with \"WebM video\"; preserve \"H.264 · AAC\" and \"VP8 · Opus\". In bottom-left panel make the playable video preview landscape ratio 568:320 (about 16:9), using same artwork and play overlay, without changing the output metadata or text. Do not add formats or features. Keep all local download, 1 hour retention, foreground instruction, approximate ETA, retry and cancellation wording intact."
+  }
+]

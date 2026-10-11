@@ -15,6 +15,23 @@
 - Reuse `components/ui`, `@/lib/utils`, existing CSS tokens, and installed dependencies. Consult [the dependency and workflow guide](docs/AGENT_GUIDE.md) only for the packages or tools involved.
 - Keep frame and audio sample updates outside React state. Release workers, audio resources, listeners, timers, and object URLs on cancellation and disposal.
 
+## Shared browser hooks and wrappers
+
+- Use the existing hooks and wrappers wherever their behavior fits. Read the relevant implementation before extending it; keep components focused on rendering and composing actions. Extend shared utilities for missing reusable behavior rather than duplicating file readers, playback cleanup, download links, or animation loops in components.
+
+| Action                        | Reuse                                             | Usage requirements                                                                                                                                                                                                                               |
+| ----------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Single-file selection         | [useFilePicker](hooks/use-file-picker.ts)         | Bind `inputRef` and `onChange`; use `open` and `reset`. Pass disabled/busy state. The hook resets the input so the same file can be selected again; callers own validation and drag/drop handling.                                               |
+| Local file loading            | [useLocalFile](hooks/use-local-file.ts)           | Supply stable `load`/`release` functions and pass the provided `AbortSignal` through async work. Use `select` and `clear`; the hook handles loading/error state, stale results, and cleanup on replacement or route disposal.                    |
+| Audio playback                | [useAudioPlayback](hooks/use-audio-playback.ts)   | Bind `audioProps` to the audio element and use `selectTrack`, `clearTrack`, `play`, `pause`, and `seek`. Handle rejected `play()` promises. Preserve metadata validation and the seven-minute limit; this hook provides native preview playback. |
+| Blob/canvas downloads         | [useDownload](hooks/use-download.ts)              | Use `download` or `downloadCanvas` so URL lifetime and pending canvas results are managed centrally. Handle `downloadCanvas` rejection; its `false` result means disposal or replacement skipped the download.                                   |
+| Preview animation             | [useAnimationFrame](hooks/use-animation-frame.ts) | Paint with the supplied delta, keep frame data in refs, and pass running state and a positive frame rate. This bounded clock skips hidden time; use the media pipeline's frame clock for deterministic exports.                                  |
+| Browser file/image operations | [browser-files](lib/browser-files.ts)             | Reuse abortable `readFile` and `loadImage`. Prefer `useDownload` in React; direct `downloadURL` callers own object URL cleanup. Keep browser API calls behind client boundaries.                                                                 |
+| Audio/artwork loading         | [local-media](lib/local-media.ts)                 | Reuse `readAudioFile`, `releaseAudioFile`, and `readArtworkFile` with `useLocalFile` or `useAudioPlayback`. Extension/size checks alone do not establish playable or decodable media.                                                            |
+| File loading outside React    | [local-file](lib/local-file.ts)                   | Reuse `createLocalFileLoader` for cancellation, state subscriptions, and stale-result release; call `clear` and unsubscribe when disposed.                                                                                                       |
+
+- Preserve lifecycle behavior when modifying these utilities. Add meaningful cancellation, replacement, failure, or cleanup regression coverage to `bun run test:media`; verify affected playback and download flows in a browser when available.
+
 ## Efficient workflow
 
 - Read relevant nested instructions and affected files, not the whole repository. Use `rg --files` and scoped `rg -n`; exclude `.git`, `.next`, and `node_modules` from general searches.
@@ -29,7 +46,7 @@
 
 - Run targeted checks during editing, then `bun run check` once at completion for code or tooling changes. It checks Oxlint syntax and type-aware rules, Oxfmt, generated Next.js route types with TypeScript 7 `tsc --noEmit`, and hook/media/tooling regression tests.
 - For documentation-only changes, check formatting and links. Run `bun run build` for changes affecting production bundling, Next.js configuration, dependencies, or route rendering.
-- Add regression tests when they protect meaningful behavior. `bun run test:hooks` covers commit tooling; `bun run test:media` covers the shared FFmpeg wrapper lifecycle with mocks; `bun run test:tooling` covers native, compatibility, and semantic lint rules. Staged checks stay syntax-only; CI and pre-push run `bun run lint:types` too.
+- Add regression tests when they protect meaningful behavior. `bun run test:hooks` covers commit tooling; `bun run test:media` covers shared FFmpeg, file loading, browser file wrappers, and audio analysis lifecycles, including mocks; `bun run test:tooling` covers native, compatibility, and semantic lint rules. Staged checks stay syntax-only; CI and pre-push run `bun run lint:types` too.
 - Authorized commits automatically bump the package version after staged checks pass. Use patch by default or `VERSION_BUMP=minor|major` when requested; do not create a separate version commit.
 - Verify UI and media changes in a browser when available. Compilation does not prove audio synchronisation, export playback, or mobile memory safety.
 - Never weaken checks to obtain a pass. State blockers and distinguish verified results from assumptions.

@@ -22,6 +22,8 @@ bun run dev
 
 Installation generates local FFmpeg assets and installs Husky hooks. If hooks are missing, run `bun run prepare`.
 
+The compiler is TypeScript **7.0.2**. Use a TypeScript 7-compatible editor language server and read the [upgrade and breaking-change notes](docs/AGENT_GUIDE.md#typescript-7-version-and-upgrade-notes) before adding compiler API tools or language-service plugins.
+
 ## Code and media changes
 
 - Reuse existing components, utilities, and dependencies; keep TypeScript strict.

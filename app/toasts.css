@@ -1,0 +1,83 @@
+/* Keep Sonner's stacking, swipe, and accessibility; theme its surfaces with shared tokens. */
+.audioframe-toaster[data-sonner-toaster][data-sonner-theme] {
+  font-family: var(--font-sans);
+  --border-radius: var(--panel-radius);
+  --normal-bg: var(--card);
+  --normal-border: var(--border);
+  --normal-text: var(--card-foreground);
+  --success-bg: var(--success-muted);
+  --success-border: color-mix(in oklch, var(--success) 20%, var(--success-muted));
+  --success-text: var(--success);
+  --info-bg: var(--info-muted);
+  --info-border: color-mix(in oklch, var(--info) 20%, var(--info-muted));
+  --info-text: var(--info);
+  --warning-bg: var(--warning-muted);
+  --warning-border: color-mix(in oklch, var(--warning) 20%, var(--warning-muted));
+  --warning-text: var(--warning);
+  --error-bg: var(--danger-muted);
+  --error-border: color-mix(in oklch, var(--destructive) 20%, var(--danger-muted));
+  --error-text: var(--destructive);
+}
+
+.audioframe-toaster [data-sonner-toast][data-styled='true'] {
+  gap: 12px;
+  padding: 16px;
+  font-size: 14px;
+  box-shadow: var(--panel-shadow);
+  transition-duration: var(--motion-duration);
+  transition-timing-function: var(--motion-ease);
+}
+
+.audioframe-toaster [data-sonner-toast][data-styled='true'] [data-icon] {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+}
+
+.audioframe-toaster [data-sonner-toast][data-styled='true'] [data-title] {
+  font-family: var(--font-heading);
+  font-weight: 600;
+}
+
+.audioframe-toaster [data-sonner-toast][data-styled='true'] [data-description] {
+  font-size: 13px;
+  line-height: 1.5;
+  color: inherit;
+}
+
+.audioframe-toaster [data-sonner-toast][data-styled='true'] [data-button] {
+  min-height: var(--control-size-sm);
+  height: auto;
+  padding: 6px 12px;
+  border-radius: var(--control-radius);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-family: inherit;
+  transition-duration: var(--motion-duration);
+  transition-timing-function: var(--motion-ease);
+}
+
+.audioframe-toaster [data-sonner-toast][data-styled='true'] [data-cancel] {
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+}
+
+.audioframe-toaster [data-sonner-toast][data-styled='true'] [data-close-button] {
+  width: var(--control-size-sm);
+  height: var(--control-size-sm);
+  box-shadow: var(--control-shadow);
+}
+
+.audioframe-toaster [data-sonner-toast][data-styled='true']:hover [data-close-button]:hover {
+  background: var(--muted);
+  border-color: var(--border);
+  color: var(--foreground);
+}
+
+.audioframe-toaster [data-sonner-toast]:focus-visible,
+.audioframe-toaster [data-sonner-toast][data-styled='true'] [data-button]:focus-visible,
+.audioframe-toaster [data-sonner-toast][data-styled='true'] [data-close-button]:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+  box-shadow: var(--panel-shadow);
+}

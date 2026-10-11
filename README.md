@@ -8,7 +8,7 @@ Turn music, cover art, and lyrics into videos with audio-reactive visuals—righ
 
 [![Status: In development](https://img.shields.io/badge/status-in_development-f59e0b?style=flat-square)](#project-status)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![TypeScript 7.0.2](https://img.shields.io/badge/TypeScript-7.0.2-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Bun 1.4](https://img.shields.io/badge/Bun-1.4-f9f1e1?style=flat-square&logo=bun&logoColor=black)](https://bun.sh/)
 [![FFmpeg.wasm](https://img.shields.io/badge/FFmpeg-WebAssembly-007808?style=flat-square&logo=ffmpeg&logoColor=white)](https://ffmpegwasm.netlify.app/)
 
@@ -86,7 +86,9 @@ Install, development, and build scripts copy the installed FFmpeg runtime assets
 
 ## Development
 
-The stack is **Next.js App Router**, **React 19**, **strict TypeScript 7**, **Tailwind CSS 4**, and **FFmpeg.wasm**. Browser processing uses a single-threaded core as the compatibility baseline; additional workers or multi-threading require profiling and capability checks.
+The stack is **Next.js App Router**, **React 19**, **strict TypeScript 7.0.2**, **Tailwind CSS 4**, and **FFmpeg.wasm**. Browser processing uses a single-threaded core as the compatibility baseline; additional workers or multi-threading require profiling and capability checks.
+
+The TypeScript upgrade required no application-code or strict compiler-option changes. Tooling compatibility changes include the legacy compiler API and editor language-service plugins; Next.js uses the supported compiler CLI. See [TypeScript 7 upgrade notes](docs/AGENT_GUIDE.md#typescript-7-version-and-upgrade-notes) for versions, breaking changes, and editor setup.
 
 | Command                 | Purpose                                                                 |
 | ----------------------- | ----------------------------------------------------------------------- |
@@ -163,6 +165,7 @@ The configured [CI workflow](.github/workflows/ci.yml) runs lint, formatting, Ty
 - [v0 product decisions](docs/V0_DECISIONS.md) — inputs, outputs, privacy, limits, and release requirements.
 - [Browser media architecture](docs/MEDIA_PIPELINE_ARCHITECTURE.md) — worker ownership, encoding paths, memory, and benchmarks.
 - [Browser FFmpeg wrapper](docs/FFMPEG.md) — hook usage, worker reuse, cancellation, cleanup, and local WASM assets.
+- [Future YouTube integration](docs/YOUTUBE_INTEGRATION_PLAN.md) — proposed uploads, authorization, costs, notifications, and launch requirements beyond v0.
 - [Repository instructions](AGENTS.md) — coding conventions, scope, and verification.
 - [Dependency and workflow guide](docs/AGENT_GUIDE.md) — package guidance and focused documentation lookup.
 - [Sub-agent guide](docs/SUBAGENTS.md) — bounded task ownership when delegation is requested.
