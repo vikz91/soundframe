@@ -31,7 +31,7 @@ The compiler is TypeScript **7.0.2**. Use a TypeScript 7-compatible editor langu
 - Reuse the FFmpeg engine between jobs and release workers, listeners, timers, and object URLs on cancellation or disposal. See the [wrapper guide](docs/FFMPEG.md) and [media architecture](docs/MEDIA_PIPELINE_ARCHITECTURE.md).
 - Add regression tests when they protect changed behaviour. Use synthetic or public-domain media samples; do not commit private recordings or generated exports.
 
-Use `/create` for real media validation/playback/Canvas preview and `/prototype` for the sample-only simulated workflow. Real video export is disabled. Reuse [the existing input and composition modules](docs/MEDIA_PIPELINE_ARCHITECTURE.md#implemented-input-and-preview-stage), preserve the absolute frame-index timeline, and keep live analysis samples outside React state. The future encoder needs deterministic offline analysis and a bounded input bridge; do not accumulate a full raw frame sequence.
+Use `/create` for real media validation/playback/Canvas preview and `/prototype` for the sample-only simulated workflow. Real MP4/WebM export and retained local downloads are implemented. Reuse [the existing input and composition modules](docs/MEDIA_PIPELINE_ARCHITECTURE.md#implemented-input-and-preview-stage), preserve the absolute frame-index timeline, and keep live analysis samples outside React state. Reuse the deterministic offline analysis and one-second Canvas batch bridge in `lib/editor/encode.ts`; do not accumulate a full raw frame sequence. The opt-in `scripts/verify-encoding.mjs` checks real browser exports with external Playwright/Chrome and FFmpeg/FFprobe; full-length and physical-device release checks remain open.
 
 ## Verify your work
 

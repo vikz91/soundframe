@@ -24,11 +24,11 @@ The v0 goal is a free tool for desktop and capable mobile browsers, hosted on Ve
 
 ## Project status
 
-**Local media preview is implemented; video export remains in development.** `/create` accepts real audio and artwork, plays the selected audio, renders Cover/Spectrum/Lighting previews, displays plain or timed LRC lyrics, and imports/exports JSON settings. The separate `/prototype` route uses sample media and simulated export/download actions.
+**Local media preview, video encoding, and output downloads are implemented.** `/create` accepts real audio and artwork, renders Cover/Spectrum/Lighting with plain or timed LRC lyrics, imports/exports JSON settings, and generates MP4 or WebM videos locally. `/prototype` remains a separate sample-only simulation.
 
-The shared FFmpeg.wasm wrapper is implemented, but it is not yet connected to video export in the real editor. See the [TODO tracker](TODO.md), [product decisions](docs/V0_DECISIONS.md), and [media architecture](docs/MEDIA_PIPELINE_ARCHITECTURE.md) for remaining work and release criteria.
+Encoding uses one lazy FFmpeg.wasm worker with bounded Canvas batches. The editor reports progress and approximate ETA, supports cancellation/retry, and retains the previous successful video until replacement or expiry. See the [TODO tracker](TODO.md), [product decisions](docs/V0_DECISIONS.md), and [media architecture](docs/MEDIA_PIPELINE_ARCHITECTURE.md) for implementation and remaining release gates.
 
-On 12 October 2026, `bun run check` passed with 104 tests and the production build passed. Desktop browser checks covered real files, playback, seeking, lyrics, settings round trips, and input boundary/error cases; a 390 px viewport had no horizontal overflow. [Verification details and screenshots](TODO.md#completed-real-media-inputs-and-composition) distinguish browser evidence from mocked lifecycle/rendering tests. Physical mobile performance and encoded-video correctness remain unverified.
+On 12 October 2026, `bun run check` passed with 113 tests and `bun run build` passed. Six short desktop exports passed codec, 568 × 320 / 30 fps, audio, playback, seeking, partial-chunk, and lyric-boundary checks. The acceptance suite passed against development and production builds. Browser checks also covered cancellation, forced failure/retry, expiry, URL cleanup, and a 390 px result layout. [Encoding evidence](TODO.md#completed-real-encoding-and-output-lifecycle) distinguishes these results from pending seven-minute and physical Android/iPhone validation.
 
 ## The workflow
 
@@ -40,21 +40,20 @@ Available now at `/create`:
 2. Choose **Cover**, **Spectrum**, or **Lighting** mode.
 3. Add optional song details, plain lyrics, or timed LRC lyrics; adjust colours and typography.
 4. Play, pause, seek, and adjust volume while previewing the composition.
-5. Export settings as JSON to reuse them later. Importing settings requires confirmation and preserves the selected audio and artwork.
+5. Export **MP4** or **WebM**, preview the generated video, and download it locally.
+6. Export settings as JSON to reuse them later. Importing settings requires confirmation and preserves the selected audio and artwork.
 
-Real video export is visibly disabled. The remaining workflow will encode **MP4** or **WebM** with audio and provide local video downloads.
-
-| Capability     | Current implementation or remaining target                                   |
-| -------------- | ---------------------------------------------------------------------------- |
-| Audio input    | MP3, M4A, WAV, or the audio track from MP4; actual contents/decode validated |
-| Artwork        | JPG or PNG; actual dimensions/decode validated                               |
-| Visuals        | Cover artwork, frequency-driven Spectrum, and waveform-driven Lighting       |
-| Text           | Song title, album, artist, website, static lyrics, and timed LRC             |
-| Canvas preview | **568 × 320**, absolute frame-index timeline at **30 fps**                   |
-| Presets        | Strict version-1 JSON settings; media files are selected separately          |
-| MP4 target     | H.264 video with AAC audio; encoding pending                                 |
-| WebM target    | VP8 video with Opus audio; encoding pending                                  |
-| Export target  | Up to seven minutes, one export at a time, progress, ETA, and cancellation   |
+| Capability       | Current implementation or remaining target                                   |
+| ---------------- | ---------------------------------------------------------------------------- |
+| Audio input      | MP3, M4A, WAV, or the audio track from MP4; actual contents/decode validated |
+| Artwork          | JPG or PNG; actual dimensions/decode validated                               |
+| Visuals          | Cover artwork, frequency-driven Spectrum, and waveform-driven Lighting       |
+| Text             | Song title, album, artist, website, static lyrics, and timed LRC             |
+| Canvas preview   | **568 × 320**, absolute frame-index timeline at **30 fps**                   |
+| Presets          | Strict version-1 JSON settings; media files are selected separately          |
+| MP4 output       | H.264 video with AAC stereo audio                                            |
+| WebM output      | VP8 video with Opus stereo audio                                             |
+| Export lifecycle | Up to seven minutes, one export at a time, progress, ETA, and cancellation   |
 
 ### Input limits and lyrics
 
@@ -68,9 +67,9 @@ JSON settings must be non-empty and at most **128 KiB**, with the shape `{ "vers
 
 ### Privacy and device support
 
-The current editor reads and decodes selected media locally using browser APIs. Web Audio drives the visual effects, Canvas paints the preview, and JSON settings download locally. The planned encoder uses FFmpeg.wasm and its built-in worker; the real editor does not load that engine for preview. Server media uploads and hosted video links remain outside v0.
+The current editor reads and decodes selected media locally using browser APIs. Web Audio drives the visual effects, Canvas paints the preview, and JSON settings download locally. The encoder uses FFmpeg.wasm and its built-in worker, loaded only when export starts; preview does not load the engine. Server media uploads and hosted video links remain outside v0.
 
-Real generated-video retention is pending. Its planned policy keeps output available for repeat downloads until **Clear project**, page closure, or one hour after generation. The timer is best effort while the page runs; it cannot delete files already downloaded to your device. The sample prototype simulates this lifecycle.
+Generated video Blobs and URLs remain available for repeat downloads until **Clear project**, page closure, or one hour after successful generation. Downloads do not extend retention; successful replacement releases the old output, while editing, cancellation, and failure preserve it. The timer is best effort while the page runs; it cannot delete files already downloaded to your device. The sample prototype simulates this lifecycle.
 
 Modern desktop and capable mobile browsers are the target. Keep the app open and in the foreground during export. Older or low-spec phones may be unsupported; mobile performance and complete seven-minute exports still require device testing.
 

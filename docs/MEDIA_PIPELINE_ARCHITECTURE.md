@@ -1,6 +1,6 @@
 # Audioframe browser media pipeline architecture
 
-Status: Locked architecture direction, agreed on 12 October 2026. Local media validation and Canvas preview are implemented; video encoding integration and device benchmarks remain pending.
+Status: Locked architecture direction, agreed on 12 October 2026. Local media validation, Canvas preview, bounded video encoding, and output retention are implemented; full-length and device benchmarks remain pending.
 
 The browser owns media validation, composition, encoding, and download. Use one shared, lazy FFmpeg.wasm engine and its built-in worker, reusing it across sequential exports while the editor is open. Remove each job's files after success; terminate the engine on cancellation, failure, or editor disposal. See the [wrapper API](FFMPEG.md). Introduce chunking only when the selected Canvas export path needs bounded frame batches; parallel chunk encoding requires evidence that it improves speed without unacceptable memory use.
 
@@ -8,15 +8,15 @@ Product limits and retention rules remain defined in [v0 decisions](V0_DECISIONS
 
 ## Implemented input and preview stage
 
-The real editor is [MediaWorkspace](../components/editor/workspace.tsx) at `/create`. `/prototype` retains the sample-only workspace and simulated output lifecycle. Real video export is disabled; the preview does not load FFmpeg.
+The real editor is [MediaWorkspace](../components/editor/workspace.tsx) at `/create`. `/prototype` retains the sample-only workspace and simulated output lifecycle. Real MP4/WebM export runs through the bounded pipeline; preview does not load FFmpeg.
 
 - [Local media validation](../lib/local-media.ts) checks byte limits, container signatures, audio-track presence, browser decode, and finite positive audio duration up to 420 seconds. MP4 duration comes from decoded audio rather than its video; preliminary audio media-header checks allow bounded AAC padding while the decoded-duration limit stays strict. Artwork headers are checked before image decoding, including JPEG orientation-compatible dimensions.
 - [Capability checks](../lib/media-capabilities.ts) probe single-thread WASM, a blob worker, local files/blob URLs, Web Audio, Canvas drawing, font loading, and CSS colour support. Passing this gate does not establish encoding speed or mobile memory safety.
 - Shared file/playback hooks handle cancellation, replacement, stale-result disposal, seek, volume, and rejected playback. The editor reuses [LocalAudioAnalyser](../app/demo/viz/audio-analysis.ts); frequency and waveform buffers are reused. Samples and frame painting stay outside React state.
-- [Composition preparation](../lib/editor/composition.ts) loads selected fonts and freezes preferences, colours, metadata, and parsed cues into a snapshot holding the decoded artwork reference. The caller owns artwork lifetime. `renderComposition` paints 568 × 320 frames from an absolute integer `frameIndex`, with time equal to `frameIndex / 30`. Spectrum consumes frequency samples; Lighting consumes waveform RMS. Live preview analysis is not yet an offline export-analysis implementation.
+- [Composition preparation](../lib/editor/composition.ts) loads selected fonts and freezes preferences, colours, metadata, and parsed cues into a snapshot holding the decoded artwork reference. The caller owns artwork lifetime. `renderComposition` paints 568 × 320 frames from an absolute integer `frameIndex`, with time equal to `frameIndex / 30`. Spectrum consumes frequency samples; Lighting consumes waveform RMS. Export analysis decodes mono 22050 Hz float PCM once with FFmpeg and uses an absolute-time, buffer-reusing 1024-sample Blackman FFT/RMS source. It has no history to reset at a chunk boundary. Native preview analysis uses the browser analyser and its smoothing, so reactive levels need not be pixel-identical to offline export.
 - [LRC parsing](../lib/editor/lyrics.ts) provides deterministic lookup through forward/backward seeking. [Settings validation](../lib/editor/settings.ts) uses a strict version-1 schema with media-free preferences, confirmed replacement, and local JSON import/export.
 
-Preview and future encoding share the painter contract. Mocked Canvas tests verify identical draw operations for identical snapshots, frame indices, and analysis inputs; they do not prove encoded-pixel or audio/video equivalence. The offline analysis source, bounded frame-to-encoder bridge, and actual export validation remain implementation work.
+Preview and encoding share the painter contract. Mocked Canvas tests verify identical draw operations for identical snapshots, frame indices, and analysis inputs; they do not prove encoded-pixel or audio/video equivalence. The [offline analysis source](../lib/editor/offline-analysis.ts), [bounded encoder](../lib/editor/encode.ts), and [real browser acceptance script](../scripts/verify-encoding.mjs) implement this contract. Short real exports verify both output codecs, audio onset, final partial batches, and lyric-boundary pixels; full-length and device verification remain pending.
 
 Current bounds are 64 MiB per audio file; 12 MiB, 16 million pixels, and 8192 pixels per side for artwork; 20,000 characters for lyrics; 256 KiB per LRC file; and 128 KiB per JSON preset. These are conservative allocation guards, not measured peak-memory budgets. See [stage verification](../TODO.md#completed-real-media-inputs-and-composition) for desktop browser evidence and remaining device gates.
 
@@ -57,7 +57,9 @@ This path avoids storing a complete Canvas frame sequence. Confirm that the ship
 
 For effects requiring Canvas-rendered frames, implement an explicit bounded input strategy. FFmpeg.wasm's public filesystem workflow does not automatically provide streaming Canvas-to-encoder input.
 
-Batch size and the transfer mechanism require a prototype. Do not generate all frames before encoding. If separate encoded chunks are needed, follow the assembly contract below.
+The implemented bridge renders at most 30 RGBA frames (one second, 20.80 MiB), awaits the worker filesystem transfer, releases the JavaScript batch, encodes a video-only part, and deletes the raw worker file before producing another batch. The final partial batch uses the remaining integer frame count. Sequential parts use identical settings and keyframes at the start, then concatenate with video stream copy and one final stereo soundtrack.
+
+Canvas is selected for all three modes because the shared painter owns fonts, wrapping, clipped artwork, semantic CSS colours, gradients, and cue layout. Recreating that composition in FFmpeg filters would introduce a second renderer. Continuous graphs remain a future optimisation requiring demonstrated visual equivalence. The installed core supports H.264/AAC and VP8; native Opus with `-strict experimental` and explicit 48 kHz stereo avoids the installed `libopus` stack trap described in [upstream issue 591](https://github.com/ffmpegwasm/ffmpeg.wasm/issues/591). Short stereo WebM exports have real codec/playback evidence; music-quality evaluation remains open.
 
 ## Sequential chunk assembly contract
 
@@ -70,13 +72,15 @@ Batch size and the transfer mechanism require a prototype. Do not generate all f
 
 Incorrect chunk durations can cause timestamp artifacts. Compatible settings are necessary but do not replace playback and boundary verification.
 
-Chunking does not automatically bound total memory. Keeping every encoded chunk alongside the final output in the in-memory filesystem can create a large assembly peak. The implementation must account for input media, frame batches, encoded parts, final output, and copies held in JavaScript. The encoded-chunk storage and assembly strategy remains a benchmark decision and must honour the v0 cleanup rules.
+Chunking does not automatically bound total memory. Keeping every encoded chunk alongside the final output in the in-memory filesystem can create a large assembly peak. The implementation must account for input media, frame batches, encoded parts, final output, and copies held in JavaScript. Encoded parts are capped at 64 MiB and output at 80 MiB using file-size guards plus post-read checks. Assembly can therefore hold up to 144 MiB of encoded files, alongside the input audio (up to 64 MiB), WASM/codec allocations, and output read/Blob copies (up to another 160 MiB). Offline PCM is capped at 35.41 MiB and its analysis reference is released before finalisation; actual reclamation remains subject to garbage collection. These bounds limit application allocations, not total browser RSS.
 
 ## Memory budget
 
 At 568 × 320 and 30 fps, a seven-minute export contains 12,600 frames. A complete uncompressed RGBA frame sequence would occupy approximately 9.16 GB. Ten seconds of uncompressed RGBA frames occupies approximately 218 MB.
 
-These calculations assume four bytes per pixel and exclude encoder buffers, decoded audio, runtime memory, compressed output, and extra copies. They are sizing examples, not measured browser peaks or recommended batch sizes.
+These calculations assume four bytes per pixel and exclude encoder buffers, decoded audio, runtime memory, compressed output, and extra copies. The selected one-second batch uses 20.80 MiB per raw copy: main-thread batch, transfer copy, and virtual filesystem data can briefly coexist (approximately 62.4 MiB plus one Canvas/ImageData frame). It never holds the complete raw timeline.
+
+A desktop Apple M1/16 GiB, Chrome 154 acceptance run measured about 121 MiB peak JavaScript heap and 1.36 GiB aggregate browser-process RSS versus a 0.85 GiB baseline for six short sequential exports. The heap omits some native/WASM allocations; sampled RSS includes browser/GPU processes and shared pages. Read [latest observations](../output/encoding/verification.json) for exact values. These measurements validate the short desktop bridge, not seven-minute or mobile memory safety. Mobile capacity limits and total memory remain release gates.
 
 ## Multi-thread capability selection
 
@@ -104,7 +108,7 @@ Use seven-minute exports in both MP4 and WebM on representative desktop, Android
 - Audio synchronisation, expected frame count, lyric timing, chunk boundary continuity, and output playback.
 - Cancellation, failed-job cleanup, and repeated-export behaviour.
 
-Mobile performance, batch sizes, the exact Canvas bridge, thread settings, and assembly memory safety remain unverified until these checks pass. Documentation benchmarks from other workloads do not establish expected performance for Audioframe.
+The one-second Canvas bridge and short desktop assembly have implementation and runtime evidence. Mobile performance, full-length assembly peaks, safe device limits, and alternative thread settings remain unverified until these checks pass. Documentation benchmarks from other workloads do not establish expected performance for Audioframe.
 
 ## Sources
 
