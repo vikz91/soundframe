@@ -1,0 +1,69 @@
+name: Bug report
+description: Report a reproducible bug, usability issue, or browser/media failure.
+title: '[Bug]: '
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search existing issues first. Audioframe is in development; the complete editor and export experience are still being implemented.
+        Use synthetic or public-domain media when a sample helps. Remove private recordings, credentials, and personal information from logs and screenshots.
+  - type: textarea
+    id: actual-behaviour
+    attributes:
+      label: What happened?
+      description: Describe the problem and its impact.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Include the page, actions, and settings needed to reproduce the problem.
+      placeholder: |
+        1. Open ...
+        2. Select ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behaviour
+    attributes:
+      label: Expected behaviour
+      description: Describe what you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Device and environment
+      description: Include the project version or commit if known. For setup or tooling failures, include the Bun version.
+      placeholder: |
+        Device/model:
+        Operating system/version:
+        Browser/version:
+        Project version/commit:
+        Bun version (if relevant):
+    validations:
+      required: true
+  - type: textarea
+    id: media-details
+    attributes:
+      label: Media and export details
+      description: Fill this in for audio, artwork, visualisation, or export problems. Include whether the page stayed in the foreground.
+      placeholder: |
+        Audio format, duration, and approximate size:
+        Artwork format and dimensions:
+        Visual mode and relevant settings:
+        Output format:
+        Foreground/background behaviour:
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant errors
+      description: Paste relevant error messages or console output with sensitive information removed.
+      render: text
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots or sample
+      description: Add screenshots or link a small synthetic/public-domain sample if helpful. Describe any workaround you found.

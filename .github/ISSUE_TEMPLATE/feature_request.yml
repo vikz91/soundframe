@@ -1,0 +1,38 @@
+name: Feature request
+description: Propose a feature or improvement and explain the use case.
+title: '[Feature]: '
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search existing issues and review the v0 scope in the README before proposing a feature.
+        Explain the user need and whether the idea fits local browser conversion or belongs to a future version.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: Who needs this, and what are they trying to accomplish?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behaviour
+      description: Describe the user experience and the result you want.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or workarounds
+      description: Describe other approaches you considered or use today.
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and device considerations
+      description: Does this fit v0 or a future version? Include relevant formats, mobile/browser needs, privacy, or performance considerations.
+  - type: textarea
+    id: references
+    attributes:
+      label: Examples or references
+      description: Add sketches, screenshots, or links that help explain the idea. Remove sensitive information.

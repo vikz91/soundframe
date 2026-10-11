@@ -12,7 +12,7 @@ Turn music, cover art, and lyrics into videos with audio-reactive visuals—righ
 [![Bun 1.4](https://img.shields.io/badge/Bun-1.4-f9f1e1?style=flat-square&logo=bun&logoColor=black)](https://bun.sh/)
 [![FFmpeg.wasm](https://img.shields.io/badge/FFmpeg-WebAssembly-007808?style=flat-square&logo=ffmpeg&logoColor=white)](https://ffmpegwasm.netlify.app/)
 
-[Get started](#get-started) · [The workflow](#the-workflow) · [Report an issue](https://github.com/vikz91/soundframe/issues) · [Contribute](#contributing)
+[Get started](#get-started) · [The workflow](#the-workflow) · [Report an issue](https://github.com/vikz91/soundframe/issues/new/choose) · [Contribute](CONTRIBUTING.md)
 
 </div>
 
@@ -24,7 +24,7 @@ The v0 goal is a free tool for desktop and capable mobile browsers, hosted on Ve
 
 ## Project status
 
-**In active development.** The Next.js foundation, development checks, and FFmpeg.wasm dependencies are in place. The homepage is currently the starter screen; the complete editor and export experience are still being implemented.
+**In active development.** The Next.js foundation, development checks, and shared FFmpeg.wasm wrapper/hook are implemented. The complete editor and export experience remain in development.
 
 The features below describe the agreed v0 scope, not a released or fully verified converter. See the [product decisions](docs/V0_DECISIONS.md) and [media architecture](docs/MEDIA_PIPELINE_ARCHITECTURE.md) for the implementation and release criteria.
 
@@ -132,32 +132,33 @@ Hook tests create commits only inside temporary repositories. They do not stage 
 
 ## Reporting issues
 
-[Open an issue](https://github.com/vikz91/soundframe/issues/new) for a bug, usability problem, or feature proposal. For bugs, include:
+Search [existing issues](https://github.com/vikz91/soundframe/issues) first, then choose a template:
 
-- A short description, steps to reproduce, and expected versus actual behaviour.
-- Your device, operating system, browser version, and project version or commit.
-- For media failures: input format, duration, approximate file size, visual mode, and export format.
-- Relevant error messages or screenshots, with personal information removed.
+- [Bug report](https://github.com/vikz91/soundframe/issues/new?template=bug_report.yml) — reproduction steps, expected and actual behaviour, device/browser details, and optional media settings, errors, or screenshots.
+- [Feature request](https://github.com/vikz91/soundframe/issues/new?template=feature_request.yml) — the user need, proposed behaviour, alternatives, and how it fits the [v0 scope](docs/V0_DECISIONS.md).
 
-For feature proposals, explain the use case and how it fits the [v0 scope](docs/V0_DECISIONS.md). Share a small synthetic or public-domain sample where possible; avoid posting private recordings, credentials, or other sensitive data.
+For media failures, include input format, duration, approximate size, visual mode, and output format. Share a small synthetic or public-domain sample where possible; avoid posting private recordings, credentials, or other sensitive data. The [issue chooser](https://github.com/vikz91/soundframe/issues/new/choose) also allows a blank issue for reports that do not fit either template.
 
 ## Contributing
 
-Focused fixes, accessible UI improvements, documentation, and reproducible media tests are welcome.
+Focused fixes, accessible UI improvements, documentation, and reproducible media tests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) for setup, branch conventions, verification, commit versioning, and the pull request process.
 
-1. Read the [product decisions](docs/V0_DECISIONS.md) and [repository guidance](AGENTS.md). Discuss substantial scope changes in an issue first.
-2. Create a descriptive branch such as `feat/export-controls`, `fix/cancellation`, or `docs/setup`.
-3. Keep changes focused and reuse existing components and dependencies.
-4. Run `bun run check`. Run `bun run build` when changing dependencies, bundling, configuration, or rendering.
-5. For media changes, verify the affected browser flow and report the devices and formats actually tested.
-6. [Open a pull request](https://github.com/vikz91/soundframe/compare) describing the problem, change, verification, and remaining limitations.
+Pull requests use a [template](.github/PULL_REQUEST_TEMPLATE.md) covering the problem, resulting behaviour, related issues, verification, and remaining limitations. Run `bun run check` and the relevant build/browser checks, then record the actual results in your PR.
 
 A successful build or type check does not prove audio synchronisation, export playback, cancellation, or mobile memory safety. Include runtime evidence where the change affects those behaviours.
 
+### GitHub automation
+
+The configured [CI workflow](.github/workflows/ci.yml) runs lint, formatting, TypeScript, tests, a production build, and a locked dependency audit on PRs and pushes to `main`. Audits also run weekly. The [PR reporter](.github/workflows/pr-status.yml) updates one comment with the check results, including fork and Dependabot PRs.
+
+[Dependabot](.github/dependabot.yml) checks Bun packages and GitHub Actions weekly. A stable `vX.Y.Z` tag matching the package version triggers the [release workflow](.github/workflows/release.yml), which reruns CI before publishing a GitHub release with a [generated changelog](.github/release.yml). Ordinary commits bump the version locally but do not publish releases.
+
 ## Documentation
 
+- [Contribution guide](CONTRIBUTING.md) — setup, checks, versioning, and pull requests.
 - [v0 product decisions](docs/V0_DECISIONS.md) — inputs, outputs, privacy, limits, and release requirements.
 - [Browser media architecture](docs/MEDIA_PIPELINE_ARCHITECTURE.md) — worker ownership, encoding paths, memory, and benchmarks.
+- [Browser FFmpeg wrapper](docs/FFMPEG.md) — hook usage, worker reuse, cancellation, cleanup, and local WASM assets.
 - [Repository instructions](AGENTS.md) — coding conventions, scope, and verification.
 - [Dependency and workflow guide](docs/AGENT_GUIDE.md) — package guidance and focused documentation lookup.
 - [Sub-agent guide](docs/SUBAGENTS.md) — bounded task ownership when delegation is requested.
