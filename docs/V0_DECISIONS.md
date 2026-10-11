@@ -17,6 +17,8 @@ Choose files → pick a visual mode → customise → preview → export → dow
 - Do not upload input media or generated videos to a server. Do not use server-side media rendering.
 - Keep v0 free to users, subject to hosting quotas and applicable hosting plan terms.
 
+The worker strategy and conditional chunking approach are locked in [the browser media pipeline architecture](MEDIA_PIPELINE_ARCHITECTURE.md). The exact rendering bridge, thread settings, and memory budget remain subject to implementation benchmarks.
+
 ## Device support
 
 Desktop and modern mobile browsers are in scope. Older or low-spec devices may be unsupported. Check capabilities before conversion and show a clear error when processing cannot run.

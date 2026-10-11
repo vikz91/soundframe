@@ -9,3 +9,5 @@ coverage
 next-env.d.ts
 *.tsbuildinfo
 bun.lock
+public/ffmpeg/
+.agents/skills

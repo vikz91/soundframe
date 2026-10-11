@@ -17,6 +17,8 @@ const eslintConfig = defineConfig([
     'coverage/**',
     '.vercel/**',
     '.husky/_/**',
+    '.agents/skills/**',
+    'public/ffmpeg/**',
     'next-env.d.ts'
   ])
 ])
