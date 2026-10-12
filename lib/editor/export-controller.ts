@@ -1,6 +1,7 @@
 import { ffmpegClient } from '@/lib/ffmpeg'
 import type { EditorPreferences } from './types'
 import type { EncodingProgress } from './encode'
+import type { VideoResolution } from './resolution'
 
 export const videoLifetime = 60 * 60 * 1000
 export type ExportInput = {
@@ -14,6 +15,7 @@ export type VideoResult = {
   url: string | null
   filename: string
   format: 'mp4' | 'webm'
+  resolution: VideoResolution
   duration: number
   expiresAt: number
 }
@@ -30,6 +32,30 @@ const initialState: VideoExportState = {
   result: null,
   error: null,
   now: 0
+}
+function videoFilename(preferences: EditorPreferences) {
+  const clean = (value: string) =>
+    value
+      .replace(/[<>:"/\\|?*\p{Cc}]/gu, ' ')
+      .replace(/\s+/gu, ' ')
+      .trim()
+      .replace(/^\.+|\.+$/g, '')
+      .trim()
+  const title = clean(preferences.details.title) || 'Untitled track'
+  const artist = clean(preferences.details.artist)
+  const stem = [title, artist].filter(Boolean).join(' - ')
+  const suffix = ' - audioframe.' + preferences.format
+  const encoder = new TextEncoder()
+  let filename = ''
+  let bytes = 0
+  // Keep the complete name within common filesystem limits without splitting Unicode characters.
+  for (const character of stem) {
+    const size = encoder.encode(character).length
+    if (bytes + size + suffix.length > 255) break
+    filename += character
+    bytes += size
+  }
+  return filename.trimEnd() + suffix
 }
 async function encode(input: ExportInput, signal: AbortSignal, report: (work: EncodingProgress) => void) {
   const [{ encodeVideo }, { prepareComposition }] = await Promise.all([import('./encode'), import('./composition')])
@@ -120,8 +146,9 @@ export function createVideoExportController(encoder = encode, resources = browse
         result: {
           blob,
           url,
-          filename: `audioframe.${selected.preferences.format}`,
+          filename: videoFilename(selected.preferences),
           format: selected.preferences.format,
+          resolution: selected.preferences.resolution,
           duration: selected.duration,
           expiresAt: now + videoLifetime
         }

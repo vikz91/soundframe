@@ -19,7 +19,9 @@ const preferencesSchema = z
     }),
     lyricsMode: z.enum(['plain', 'lrc']),
     lyricsText: z.string().max(20000),
-    format: z.enum(['mp4', 'webm'])
+    format: z.enum(['mp4', 'webm']),
+    // Version-1 presets written before resolution selection retain their original size.
+    resolution: z.enum(['320p', '720p']).default('320p')
   })
   .superRefine((preferences, context) => {
     if (preferences.lyricsMode !== 'lrc') return

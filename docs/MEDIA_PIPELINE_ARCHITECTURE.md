@@ -4,7 +4,7 @@ Status: Locked architecture direction, agreed on 12 October 2026. Local media va
 
 The browser owns media validation, composition, encoding, and download. Use one shared, lazy FFmpeg.wasm engine and its built-in worker, reusing it across sequential exports while the editor is open. Remove each job's files after success; terminate the engine on cancellation, failure, or editor disposal. See the [wrapper API](FFMPEG.md). Introduce chunking only when the selected Canvas export path needs bounded frame batches; parallel chunk encoding requires evidence that it improves speed without unacceptable memory use.
 
-Product limits and retention rules remain defined in [v0 decisions](V0_DECISIONS.md): seven-minute audio, 568 × 320 at 30 fps, MP4/WebM output, desktop and capable mobile support, local downloads, and no server media uploads.
+Product limits and retention rules remain defined in [v0 decisions](V0_DECISIONS.md): seven-minute audio, default 320p (568 × 320) or optional 720p (1280 × 720) at 30 fps, MP4/WebM output, desktop and capable mobile support, local downloads, and no server media uploads.
 
 ## Implemented input and preview stage
 
@@ -57,7 +57,7 @@ This path avoids storing a complete Canvas frame sequence. Confirm that the ship
 
 For effects requiring Canvas-rendered frames, implement an explicit bounded input strategy. FFmpeg.wasm's public filesystem workflow does not automatically provide streaming Canvas-to-encoder input.
 
-The implemented bridge renders at most 30 RGBA frames (one second, 20.80 MiB), awaits the worker filesystem transfer, releases the JavaScript batch, encodes a video-only part, and deletes the raw worker file before producing another batch. The final partial batch uses the remaining integer frame count. Sequential parts use identical settings and keyframes at the start, then concatenate with video stream copy and one final stereo soundtrack.
+The implemented bridge renders at most 30 RGBA frames at 320p (one second, 20.80 MiB), or five frames at 720p (17.58 MiB). It awaits the worker filesystem transfer, releases the JavaScript batch, encodes a video-only part, and deletes the raw worker file before producing another batch. The shared painter scales its 568 × 320 logical layout to the chosen Canvas dimensions before drawing. The final partial batch uses the remaining integer frame count. Sequential parts use identical settings and keyframes at the start, then concatenate with video stream copy and one final stereo soundtrack.
 
 Canvas is selected for all three modes because the shared painter owns fonts, wrapping, clipped artwork, semantic CSS colours, gradients, and cue layout. Recreating that composition in FFmpeg filters would introduce a second renderer. Continuous graphs remain a future optimisation requiring demonstrated visual equivalence. The installed core supports H.264/AAC and VP8; native Opus with `-strict experimental` and explicit 48 kHz stereo avoids the installed `libopus` stack trap described in [upstream issue 591](https://github.com/ffmpegwasm/ffmpeg.wasm/issues/591). Short stereo WebM exports have real codec/playback evidence; music-quality evaluation remains open.
 
@@ -78,7 +78,7 @@ Chunking does not automatically bound total memory. Keeping every encoded chunk 
 
 At 568 × 320 and 30 fps, a seven-minute export contains 12,600 frames. A complete uncompressed RGBA frame sequence would occupy approximately 9.16 GB. Ten seconds of uncompressed RGBA frames occupies approximately 218 MB.
 
-These calculations assume four bytes per pixel and exclude encoder buffers, decoded audio, runtime memory, compressed output, and extra copies. The selected one-second batch uses 20.80 MiB per raw copy: main-thread batch, transfer copy, and virtual filesystem data can briefly coexist (approximately 62.4 MiB plus one Canvas/ImageData frame). It never holds the complete raw timeline.
+These calculations assume four bytes per pixel and exclude encoder buffers, decoded audio, runtime memory, compressed output, and extra copies. The default 320p one-second batch uses 20.80 MiB per raw copy: main-thread batch, transfer copy, and virtual filesystem data can briefly coexist (approximately 62.4 MiB plus one Canvas/ImageData frame). At 720p, five-frame batches stay below this raw-copy budget; encoder and Canvas allocations still grow with resolution, and more batches take longer. It never holds the complete raw timeline.
 
 A desktop Apple M1/16 GiB, Chrome 154 acceptance run measured about 121 MiB peak JavaScript heap and 1.36 GiB aggregate browser-process RSS versus a 0.85 GiB baseline for six short sequential exports. The heap omits some native/WASM allocations; sampled RSS includes browser/GPU processes and shared pages. Read [latest observations](../output/encoding/verification.json) for exact values. These measurements validate the short desktop bridge, not seven-minute or mobile memory safety. Mobile capacity limits and total memory remain release gates.
 

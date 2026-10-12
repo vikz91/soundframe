@@ -150,7 +150,14 @@ export function renderComposition(
   const analysis = frame.reducedMotion ? null : frame.analysis
   const lyric = preferences.lyricsMode === 'lrc' ? lyricAt(snapshot.cues, seconds) : preferences.lyricsText.trim()
   context.save()
-  context.setTransform(1, 0, 0, 1, 0, 0)
+  context.setTransform(
+    (context.canvas?.width ?? compositionSize.width) / compositionSize.width,
+    0,
+    0,
+    (context.canvas?.height ?? compositionSize.height) / compositionSize.height,
+    0,
+    0
+  )
   context.globalAlpha = 1
   context.globalCompositeOperation = 'source-over'
   context.clearRect(0, 0, compositionSize.width, compositionSize.height)

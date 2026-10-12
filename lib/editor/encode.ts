@@ -1,22 +1,29 @@
 import { ffmpegClient, type FFmpegSession } from '@/lib/ffmpeg'
 import { compositionSize, renderComposition, type CompositionSnapshot } from './composition'
 import { analysisSampleRate, createOfflineAnalysis } from './offline-analysis'
+import { videoSizes, type VideoResolution } from './resolution'
 
 export const encodingLimits = {
   batchFrames: 30,
   frameBytes: 568 * 320 * 4,
+  maxFrameBatchBytes: 568 * 320 * 4 * 30,
   maxPartsBytes: 64 * 1024 * 1024,
   maxOutputBytes: 80 * 1024 * 1024,
   maxPcmBytes: 421 * analysisSampleRate * 4
 } as const
 export type EncodingProgress = { stage: 'prepare' | 'render' | 'finalise'; progress: number; etaSeconds?: number }
 
-export function frameBatches(duration: number) {
+export function frameBatches(duration: number, resolution: VideoResolution = '320p') {
   if (!Number.isFinite(duration) || duration <= 0 || duration > 420) throw new Error('Choose audio up to 7 minutes.')
   const total = Math.ceil(duration * compositionSize.fps)
-  return Array.from({ length: Math.ceil(total / encodingLimits.batchFrames) }, (_, index) => ({
-    start: index * encodingLimits.batchFrames,
-    count: Math.min(encodingLimits.batchFrames, total - index * encodingLimits.batchFrames)
+  const { width, height } = videoSizes[resolution]
+  const batchFrames = Math.min(
+    encodingLimits.batchFrames,
+    Math.floor(encodingLimits.maxFrameBatchBytes / (width * height * 4))
+  )
+  return Array.from({ length: Math.ceil(total / batchFrames) }, (_, index) => ({
+    start: index * batchFrames,
+    count: Math.min(batchFrames, total - index * batchFrames)
   }))
 }
 
@@ -25,7 +32,7 @@ const videoOptions = (format: 'mp4' | 'webm') =>
     ? ['-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23', '-pix_fmt', 'yuv420p', '-bf', '0', '-g', '30']
     : ['-c:v', 'libvpx', '-deadline', 'realtime', '-cpu-used', '8', '-b:v', '1000k', '-pix_fmt', 'yuv420p', '-g', '30']
 
-/** Await each transfer/encode before producing the next one-second RGBA batch. */
+/** Await each transfer/encode before producing the next memory-bounded RGBA batch. */
 export async function encodeFrames(
   session: FFmpegSession,
   snapshot: CompositionSnapshot,
@@ -35,7 +42,9 @@ export async function encodeFrames(
   analysis: ReturnType<typeof createOfflineAnalysis> | null,
   report: (value: EncodingProgress) => void
 ) {
-  const batches = frameBatches(duration)
+  const { width, height } = videoSizes[snapshot.preferences.resolution]
+  const frameBytes = width * height * 4
+  const batches = frameBatches(duration, snapshot.preferences.resolution)
   const total = Math.ceil(duration * 30)
   const format = snapshot.preferences.format
   const parts: string[] = []
@@ -43,11 +52,11 @@ export async function encodeFrames(
   const started = performance.now()
   for (const batch of batches) {
     signal.throwIfAborted()
-    let frames: Uint8Array | null = new Uint8Array(encodingLimits.frameBytes * batch.count)
+    let frames: Uint8Array | null = new Uint8Array(frameBytes * batch.count)
     for (let offset = 0; offset < batch.count; offset++) {
       const frameIndex = batch.start + offset
       renderComposition(context, snapshot, { frameIndex, analysis: analysis?.(frameIndex) })
-      frames.set(context.getImageData(0, 0, 568, 320).data, offset * encodingLimits.frameBytes)
+      frames.set(context.getImageData(0, 0, width, height).data, offset * frameBytes)
       // Yield for cancellation/UI even when the tab's animation clock is paused.
       if (offset % 5 === 4) await new Promise<void>((resolve) => setTimeout(resolve, 0))
       signal.throwIfAborted()
@@ -61,7 +70,7 @@ export async function encodeFrames(
       '-pixel_format',
       'rgba',
       '-video_size',
-      '568x320',
+      `${width}x${height}`,
       '-framerate',
       '30',
       '-i',
@@ -87,7 +96,15 @@ export async function encodeFrames(
       etaSeconds: ((performance.now() - started) / 1000 / completed) * (total - completed)
     })
   }
-  await session.write('parts.txt', new TextEncoder().encode(parts.map((name) => `file '${name}'`).join('\n')))
+  // Container durations round short chunks. Use absolute frame boundaries instead,
+  // rounding their difference to concat's microsecond clock so errors cannot accumulate.
+  const manifest = parts.map((name, index) => {
+    const batch = batches[index]
+    const start = Math.round((batch.start * 1000000) / compositionSize.fps)
+    const end = Math.round(((batch.start + batch.count) * 1000000) / compositionSize.fps)
+    return `file '${name}'\nduration ${((end - start) / 1000000).toFixed(6)}`
+  })
+  await session.write('parts.txt', new TextEncoder().encode(manifest.join('\n')))
 }
 
 export async function encodeVideo({
@@ -104,12 +121,13 @@ export async function encodeVideo({
   report: (value: EncodingProgress) => void
 }) {
   signal.throwIfAborted()
-  frameBatches(duration)
+  frameBatches(duration, snapshot.preferences.resolution)
   const cancel = () => ffmpegClient.cancel()
   signal.addEventListener('abort', cancel, { once: true })
   const canvas = document.createElement('canvas')
-  canvas.width = 568
-  canvas.height = 320
+  const { width, height } = videoSizes[snapshot.preferences.resolution]
+  canvas.width = width
+  canvas.height = height
   const context = canvas.getContext('2d', { willReadFrequently: true })
   try {
     if (!context) throw new Error('Canvas is unavailable for video rendering.')

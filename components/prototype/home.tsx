@@ -7,7 +7,7 @@ import { Brand } from '@/components/audioframe/brand'
 import { PreviewFrame } from '@/components/audioframe/preview-frame'
 import { StatusBadge } from '@/components/audioframe/status'
 import { Button } from '@/components/ui/button'
-import { defaultPreferences, prototypeLabel } from '@/lib/prototype/fixtures'
+import { defaultPreferences } from '@/lib/prototype/fixtures'
 import { SampleComposition } from './sample-composition'
 import { HelpDialog } from './help-dialog'
 import { ThemeToggle } from './theme-toggle'
@@ -15,10 +15,10 @@ import { ThemeToggle } from './theme-toggle'
 const steps = [
   { title: 'Bring your sound', text: 'Choose a track and cover artwork.', icon: MusicNotesIcon },
   { title: 'Make it yours', text: 'Shape the colours, title, and lyrics.', icon: PaintBrushIcon },
-  { title: 'Share the frame', text: 'Explore the video export experience.', icon: VideoCameraIcon }
+  { title: 'Download your video', text: 'Export an MP4 or WebM and save it to your device.', icon: VideoCameraIcon }
 ]
 
-export function HomePrototype() {
+export function AudioframeHome() {
   const [helpOpen, setHelpOpen] = useState(false)
   const helpTrigger = useRef<HTMLButtonElement>(null)
   return (
@@ -30,14 +30,14 @@ export function HomePrototype() {
           <Button ref={helpTrigger} variant="ghost" onClick={() => setHelpOpen(true)}>
             Help
           </Button>
-          <Button nativeButton={false} role="link" variant="outline" render={<Link href="/prototype" />}>
-            Try the prototype <ArrowRightIcon aria-hidden="true" />
+          <Button nativeButton={false} role="link" render={<Link href="/create" />}>
+            Create a video <ArrowRightIcon aria-hidden="true" />
           </Button>
         </nav>
       </header>
       <div className="mt-6">
         <StatusBadge tone="info" className="max-w-full whitespace-normal">
-          {prototypeLabel}
+          Local audio-to-video · MP4 and WebM exports
         </StatusBadge>
       </div>
       <section
@@ -55,23 +55,20 @@ export function HomePrototype() {
             <span className="text-primary">a frame.</span>
           </h1>
           <p className="mt-6 max-w-lg text-lg leading-8 text-muted-foreground">
-            Turn music, artwork, and lyrics into a visual story. Explore the creation journey with a few ready-made
-            samples.
+            Turn your music, artwork, and lyrics into a video. Choose Cover, Spectrum, or Lighting, make it yours, and
+            download it straight from your browser.
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
-            <Button nativeButton={false} role="link" size="lg" render={<Link href="/prototype" />}>
-              Try the prototype <ArrowRightIcon aria-hidden="true" />
+            <Button nativeButton={false} role="link" size="lg" render={<Link href="/create" />}>
+              Create a video <ArrowRightIcon aria-hidden="true" />
             </Button>
-            <Button nativeButton={false} role="link" size="lg" variant="outline" render={<Link href="/demo" />}>
-              Explore existing demos
-            </Button>
-            <Button nativeButton={false} role="link" size="lg" variant="outline" render={<Link href="/create" />}>
-              Preview your own files
+            <Button nativeButton={false} role="link" size="lg" variant="outline" render={<Link href="/prototype" />}>
+              Explore sample prototype
             </Button>
           </div>
           <p className="mt-5 max-w-lg text-sm leading-6 text-muted-foreground">
-            The intended product processes your files locally in your browser. This prototype uses sample media and
-            simulated processing; it creates no video files.
+            Your files stay on your device. Processing and downloads happen locally in your browser, with no account or
+            media uploads. The sample prototype is a separate simulated walkthrough.
           </p>
         </div>
         <div className="min-w-0 rounded-panel border border-border bg-card p-4 shadow-panel sm:p-6">
@@ -105,7 +102,7 @@ export function HomePrototype() {
       </section>
       <section aria-labelledby="formats-title" className="rounded-panel border border-border bg-muted/40 p-5 sm:p-6">
         <h2 id="formats-title" className="font-heading text-base font-semibold">
-          Planned file support
+          Inputs and video output
         </h2>
         <div className="mt-3 grid gap-3 text-sm leading-6 text-muted-foreground sm:grid-cols-3">
           <p>
@@ -116,20 +113,32 @@ export function HomePrototype() {
             timed LRC
           </p>
           <p>
-            <span className="block font-medium text-foreground">Video output</span>MP4 or WebM · 568 × 320 at 30 fps
+            <span className="block font-medium text-foreground">Video output</span>MP4 or WebM · 320p or 720p at 30 fps
           </p>
         </div>
+        <p className="mt-4 text-sm leading-6 text-muted-foreground">
+          Keep this page open and in the foreground while exporting. Short desktop exports have been tested;
+          seven-minute exports and mobile performance are still being validated.
+        </p>
       </section>
       <footer className="flex flex-wrap items-center justify-between gap-3 py-8 text-xs text-muted-foreground">
         <p>Audioframe · Built for music, made to stay on your device.</p>
-        <Link
-          href="/demo/design-system"
-          className="inline-flex min-h-control items-center rounded-control text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
-        >
-          Component playground
-        </Link>
+        <nav aria-label="Developer resources" className="flex flex-wrap gap-4">
+          <Link
+            href="/demo"
+            className="inline-flex min-h-control items-center rounded-control text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            Media demos
+          </Link>
+          <Link
+            href="/demo/design-system"
+            className="inline-flex min-h-control items-center rounded-control text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            Component playground
+          </Link>
+        </nav>
       </footer>
-      <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} returnFocus={helpTrigger} />
+      <HelpDialog open={helpOpen} onOpenChange={setHelpOpen} returnFocus={helpTrigger} mode="local" />
     </main>
   )
 }

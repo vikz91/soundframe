@@ -52,7 +52,7 @@ Provide a small set of controls for colour, background, sensitivity, and typogra
 
 ## Output
 
-- Landscape video at 568 × 320 pixels and 30 fps.
+- Landscape video at 30 fps, with 320p (568 × 320) as the default and an optional 720p (1280 × 720). Higher resolution takes longer to export.
 - Maximum duration of seven minutes, matching the input audio duration.
 - MP4 with H.264 video and AAC audio.
 - WebM with VP8 video and Opus audio.
@@ -82,9 +82,9 @@ Exclude audio and artwork from presets. Users must select those files again afte
 
 ## Scope boundaries
 
-v0 excludes all YouTube features, login and signup, cloud storage, saved cloud projects, and higher-resolution exports.
+v0 excludes all YouTube features, login and signup, cloud storage, saved cloud projects, and exports above 720p.
 
-Future options include direct YouTube uploads, application accounts, AWS rendering, higher resolutions, saved projects, and additional effects and customisation.
+Future options include direct YouTube uploads, application accounts, AWS rendering, resolutions above 720p, saved projects, and additional effects and customisation.
 
 ## Release verification
 

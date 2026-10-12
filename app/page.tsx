@@ -1,11 +1,12 @@
 import type { Metadata } from 'next'
-import { HomePrototype } from '@/components/prototype/home'
+import { AudioframeHome } from '@/components/prototype/home'
 
 export const metadata: Metadata = {
   title: 'Audioframe — turn your sound into a story',
-  description: 'Explore the Audioframe prototype: audio, artwork, lyrics, and a simulated video creation workflow.'
+  description:
+    'Create MP4 or WebM videos from your audio, artwork, and lyrics. Process files locally in your browser and download them to your device.'
 }
 
 export default function Home() {
-  return <HomePrototype />
+  return <AudioframeHome />
 }

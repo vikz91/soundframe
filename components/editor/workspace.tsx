@@ -13,6 +13,7 @@ import { ColourPicker, ModePicker, RangeField, TypefaceSelect } from '@/componen
 import { LyricsControls, SongDetailsFields } from '@/components/audioframe/text-controls'
 import {
   ExportFormatPicker,
+  ExportResolutionPicker,
   ExportProgress,
   ExportRecovery,
   DownloadCard
@@ -33,6 +34,7 @@ import { readSettingsFile, readLyricsFile } from '@/lib/editor/files'
 import { serializeSettings } from '@/lib/editor/settings'
 import { parseLrc } from '@/lib/editor/lyrics'
 import { createVideoExportController } from '@/lib/editor/export-controller'
+import { videoSizeLabel } from '@/lib/editor/resolution'
 import { CanvasPreview } from './canvas-preview'
 
 export function MediaWorkspace() {
@@ -416,13 +418,16 @@ export function MediaWorkspace() {
           inspector={inspector}
           footer={
             <>
-              <span className="text-xs text-muted-foreground">Local preview · 568 × 320 · 30 fps</span>
+              <span className="text-xs text-muted-foreground">
+                Local preview · {videoSizeLabel(preferences.resolution)}
+              </span>
               <Button onClick={() => setView('export')}>Output preferences</Button>
             </>
           }
         >
           <div className="space-y-5">
             <PreviewFrame
+              outputLabel={videoSizeLabel(preferences.resolution)}
               controls={
                 <PlaybackControls
                   playing={audio.playing}
@@ -457,10 +462,16 @@ export function MediaWorkspace() {
       ) : (
         <div className="space-y-6">
           {header}
+          <ExportResolutionPicker
+            value={preferences.resolution}
+            onValueChange={(resolution) => updatePreferences({ resolution })}
+            disabled={busy}
+          />
           <ExportFormatPicker
             value={preferences.format}
             onValueChange={(format) => updatePreferences({ format })}
             disabled={busy}
+            outputLabel={videoSizeLabel(preferences.resolution)}
           />
           {busy ? (
             <ExportProgress
@@ -485,7 +496,7 @@ export function MediaWorkspace() {
           {!busy && output.result ? (
             <DownloadCard
               filename={output.result.filename}
-              metadata={`${output.result.format.toUpperCase()} · 568 × 320 · 30 fps · ${formatPlaybackTime(output.result.duration)}${output.result.blob ? ` · ${(output.result.blob.size / 1048576).toFixed(2)} MiB` : ''}`}
+              metadata={`${output.result.format.toUpperCase()} · ${videoSizeLabel(output.result.resolution)} · ${formatPlaybackTime(output.result.duration)}${output.result.blob ? ` · ${(output.result.blob.size / 1048576).toFixed(2)} MiB` : ''}`}
               preview={
                 output.result.url ? (
                   <video

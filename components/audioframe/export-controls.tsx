@@ -9,15 +9,18 @@ import { Progress } from '@/components/ui/progress'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Notice, RetentionNote } from './status'
 import { cn } from '@/lib/utils'
+import { videoResolutions, type VideoResolution } from '@/lib/editor/resolution'
 
 export function ExportFormatPicker({
   value,
   onValueChange,
-  disabled = false
+  disabled = false,
+  outputLabel = videoOutputLabel
 }: {
   value: VideoFormat
   onValueChange: (format: VideoFormat) => void
   disabled?: boolean
+  outputLabel?: string
 }) {
   return (
     <div className="space-y-4">
@@ -29,8 +32,29 @@ export function ExportFormatPicker({
         disabled={disabled}
         className="sm:grid-cols-2"
       />
-      <p className="text-xs text-muted-foreground">{videoOutputLabel} · Includes audio</p>
+      <p className="text-xs text-muted-foreground">{outputLabel} · Includes audio</p>
     </div>
+  )
+}
+
+export function ExportResolutionPicker({
+  value,
+  onValueChange,
+  disabled = false
+}: {
+  value: VideoResolution
+  onValueChange: (resolution: VideoResolution) => void
+  disabled?: boolean
+}) {
+  return (
+    <SelectionCards
+      label="Output resolution"
+      options={videoResolutions}
+      value={value}
+      onValueChange={onValueChange}
+      disabled={disabled}
+      className="sm:grid-cols-2"
+    />
   )
 }
 

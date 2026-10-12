@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useAnimationFrame } from '@/hooks/use-animation-frame'
 import { prepareComposition, renderComposition, type CompositionSnapshot } from '@/lib/editor/composition'
 import type { EditorPreferences } from '@/lib/editor/types'
+import { videoSizes } from '@/lib/editor/resolution'
 import type { AudioSamples } from '@/app/demo/viz/audio-analysis'
 import { Notice } from '@/components/audioframe/status'
 
@@ -25,6 +26,7 @@ export function CanvasPreview({
   const reducedMotion = useRef(false)
   const [error, setError] = useState<string | null>(null)
   const [ready, setReady] = useState(false)
+  const { width, height } = videoSizes[preferences.resolution]
   useEffect(() => {
     const media = matchMedia('(prefers-reduced-motion: reduce)')
     const update = () => {
@@ -59,7 +61,7 @@ export function CanvasPreview({
       active = false
       snapshot.current = null
       const context = element?.getContext('2d')
-      context?.clearRect(0, 0, 568, 320)
+      if (element) context?.clearRect(0, 0, element.width, element.height)
     }
   }, [artwork, preferences, getTime])
   useAnimationFrame(
@@ -80,8 +82,8 @@ export function CanvasPreview({
     <>
       <canvas
         ref={canvas}
-        width={568}
-        height={320}
+        width={width}
+        height={height}
         role="img"
         aria-label={`${preferences.mode} composition: ${preferences.details.title || 'Untitled track'}`}
         className="h-full w-full"

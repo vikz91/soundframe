@@ -43,17 +43,17 @@ Available now at `/create`:
 5. Export **MP4** or **WebM**, preview the generated video, and download it locally.
 6. Export settings as JSON to reuse them later. Importing settings requires confirmation and preserves the selected audio and artwork.
 
-| Capability       | Current implementation or remaining target                                   |
-| ---------------- | ---------------------------------------------------------------------------- |
-| Audio input      | MP3, M4A, WAV, or the audio track from MP4; actual contents/decode validated |
-| Artwork          | JPG or PNG; actual dimensions/decode validated                               |
-| Visuals          | Cover artwork, frequency-driven Spectrum, and waveform-driven Lighting       |
-| Text             | Song title, album, artist, website, static lyrics, and timed LRC             |
-| Canvas preview   | **568 × 320**, absolute frame-index timeline at **30 fps**                   |
-| Presets          | Strict version-1 JSON settings; media files are selected separately          |
-| MP4 output       | H.264 video with AAC stereo audio                                            |
-| WebM output      | VP8 video with Opus stereo audio                                             |
-| Export lifecycle | Up to seven minutes, one export at a time, progress, ETA, and cancellation   |
+| Capability       | Current implementation or remaining target                                       |
+| ---------------- | -------------------------------------------------------------------------------- |
+| Audio input      | MP3, M4A, WAV, or the audio track from MP4; actual contents/decode validated     |
+| Artwork          | JPG or PNG; actual dimensions/decode validated                                   |
+| Visuals          | Cover artwork, frequency-driven Spectrum, and waveform-driven Lighting           |
+| Text             | Song title, album, artist, website, static lyrics, and timed LRC                 |
+| Canvas preview   | **320p (568 × 320)** or **720p (1280 × 720)** at **30 fps**; 320p is the default |
+| Presets          | Strict version-1 JSON settings; media files are selected separately              |
+| MP4 output       | H.264 video with AAC stereo audio                                                |
+| WebM output      | VP8 video with Opus stereo audio                                                 |
+| Export lifecycle | Up to seven minutes, one export at a time, progress, ETA, and cancellation       |
 
 ### Input limits and lyrics
 
@@ -187,4 +187,4 @@ The configured [CI workflow](.github/workflows/ci.yml) runs lint, formatting, Ty
 
 ## Beyond v0
 
-Possible future work includes higher-resolution exports, more visual effects and customisation, accounts and saved projects, AWS rendering, and direct YouTube uploads. These are future options; v0 focuses on local browser conversion and downloads.
+Possible future work includes resolutions above 720p, more visual effects and customisation, accounts and saved projects, AWS rendering, and direct YouTube uploads. These are future options; v0 focuses on local browser conversion and downloads.

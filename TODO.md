@@ -75,7 +75,7 @@ Implementation: [bounded encoder](lib/editor/encode.ts), [offline analysis](lib/
 45. [x] Probe the shipped WASM build for filters and codecs; verify H.264/AAC and VP8/Opus exports. Canvas supplies the loaded fonts/composition. The installed core traps on stereo `libopus`; use its native Opus encoder with explicit 48 kHz stereo instead. See the [upstream stack issue](https://github.com/ffmpegwasm/ffmpeg.wasm/issues/591).
 46. [x] Prove a short real export in both MP4 and WebM with audio, 568 × 320 dimensions, and 30 fps.
 47. [x] Select sequential Canvas batches for all three modes to preserve the existing painter, fonts, text wrapping, clipping, semantic colours, and gradients. Available FFmpeg filters would require a second composition implementation; a continuous graph is deferred until equivalence is demonstrated.
-48. [x] Bound raw batches to 30 frames (20.80 MiB), offline mono PCM to 35.41 MiB, encoded parts to 64 MiB, and final output to 80 MiB. Await transfer/encoding before producing the next batch; use FFmpeg file-size guards and reject oversized results. Desktop heap/RSS observations are recorded below; total memory and safe mobile limits remain release gates.
+48. [x] Bound raw batches to 30 frames at 320p (20.80 MiB) or five frames at 720p (17.58 MiB), offline mono PCM to 35.41 MiB, encoded parts to 64 MiB, and final output to 80 MiB. Await transfer/encoding before producing the next batch; use FFmpeg file-size guards and reject oversized results. Desktop heap/RSS observations are recorded below; total memory and safe mobile limits remain release gates.
 49. [x] If sequential chunks are necessary, implement frame-index boundaries, state continuity, compatible concatenation, and a single final soundtrack; verify the final partial chunk and assembly memory peak.
 50. [x] Connect real preparation/rendering/finalisation progress and approximate ETA to measured work, retaining one active export and one engine.
 51. [x] Implement production cancellation/retry and cleanup of workers, audio resources, buffers, virtual files, listeners, timers, and object URLs.
@@ -107,4 +107,4 @@ The first cold MP4 export took about 1.3 seconds; subsequent short exports took 
 These are optional future work, not blockers for the local converter.
 
 67. [ ] Evaluate the separate [YouTube integration plan](docs/YOUTUBE_INTEGRATION_PLAN.md) after local rendering/download release gates pass; its connection, upload, and launch requirements are still planned.
-68. [ ] Revisit higher resolutions, additional effects, accounts/saved projects, cloud storage, and server rendering only through separate product decisions.
+68. [ ] Revisit resolutions above 720p, additional effects, accounts/saved projects, cloud storage, and server rendering only through separate product decisions.

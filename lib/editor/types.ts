@@ -1,4 +1,5 @@
 import type { SongDetails, Typography, VideoFormat, VisualMode } from '@/lib/audioframe-design'
+import type { VideoResolution } from './resolution'
 
 /** Media-free preferences shared by preview frames and future encoding. */
 export type EditorPreferences = {
@@ -11,6 +12,7 @@ export type EditorPreferences = {
   lyricsMode: 'plain' | 'lrc'
   lyricsText: string
   format: VideoFormat
+  resolution: VideoResolution
 }
 
 export function defaultEditorPreferences(): EditorPreferences {
@@ -23,6 +25,7 @@ export function defaultEditorPreferences(): EditorPreferences {
     details: { title: '', artist: '', album: '', website: '' },
     lyricsMode: 'plain',
     lyricsText: '',
-    format: 'mp4'
+    format: 'mp4',
+    resolution: '320p'
   }
 }
