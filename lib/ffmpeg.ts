@@ -15,6 +15,19 @@ export type FFmpegJob = {
   timeoutMs?: number
 }
 
+/** An exclusive multi-command job in the same engine and temporary directory. */
+export type FFmpegSession = {
+  path: (name: string) => string
+  write: (name: string, data: Uint8Array) => Promise<void>
+  read: (name: string) => Promise<Uint8Array>
+  remove: (name: string) => Promise<void>
+  exec: (args: string[], progress?: (value: number) => void) => Promise<void>
+}
+export type FFmpegPipeline = Omit<FFmpegJob, 'args'> & {
+  process: (session: FFmpegSession, paths: { inputs: string[]; output: string }) => Promise<void>
+  maxOutputBytes: number
+}
+
 type Engine = Pick<
   FFmpeg,
   | 'load'
@@ -110,7 +123,7 @@ export function createFFmpegClient(factory: () => Promise<Engine> = createEngine
     }
     await instance.deleteDir(directory)
   }
-  const run = async (job: FFmpegJob): Promise<Blob> => {
+  const run = async (job: FFmpegJob | FFmpegPipeline): Promise<Blob> => {
     if (active) throw new Error('FFmpeg is busy; wait for the current job or cancel it')
     const names = [...job.inputs.map((input) => input.name), job.output.name]
     if (names.some((name) => !/^[\w.-]+$/.test(name) || name === '.' || name === '..')) {
@@ -145,11 +158,58 @@ export function createFFmpegClient(factory: () => Promise<Engine> = createEngine
       }
       assertCurrent(epoch)
       const output = `${directory}/${job.output.name}`
-      const code = await instance.exec(job.args({ inputs, output, directory }), job.timeoutMs ?? -1)
+      const current = instance
+      if ('process' in job) {
+        const path = (name: string) => {
+          assertCurrent(epoch)
+          if (!/^[\w.-]+$/.test(name) || name === '.' || name === '..') throw new Error('Use plain filenames')
+          return `${directory}/${name}`
+        }
+        await job.process(
+          {
+            path,
+            write: async (name, data) => {
+              await current.writeFile(path(name), new Uint8Array(data))
+              assertCurrent(epoch)
+            },
+            read: async (name) => {
+              const data = await current.readFile(path(name))
+              assertCurrent(epoch)
+              if (!(data instanceof Uint8Array)) throw new Error('Expected binary FFmpeg output')
+              return data
+            },
+            remove: async (name) => {
+              await current.deleteFile(path(name))
+              assertCurrent(epoch)
+            },
+            exec: async (args, onProgress) => {
+              assertCurrent(epoch)
+              const update = ({ progress: value }: { progress: number }) => {
+                if (epoch === generation && Number.isFinite(value)) onProgress?.(Math.max(0, Math.min(1, value)))
+              }
+              current.on('progress', update)
+              try {
+                const code = await current.exec(args, job.timeoutMs ?? -1)
+                assertCurrent(epoch)
+                if (code !== 0) throw new Error(`FFmpeg exited with code ${code}`)
+              } finally {
+                current.off('progress', update)
+              }
+            }
+          },
+          { inputs, output }
+        )
+      } else {
+        const code = await instance.exec(job.args({ inputs, output, directory }), job.timeoutMs ?? -1)
+        assertCurrent(epoch)
+        if (code !== 0) throw new Error(`FFmpeg exited with code ${code}`)
+      }
       assertCurrent(epoch)
-      if (code !== 0) throw new Error(`FFmpeg exited with code ${code}`)
       const bytes = await instance.readFile(output)
       if (!(bytes instanceof Uint8Array)) throw new Error('Expected binary FFmpeg output')
+      if (!bytes.length) throw new Error('FFmpeg produced an empty output')
+      if ('maxOutputBytes' in job && bytes.length > job.maxOutputBytes)
+        throw new Error('Video exceeded the output memory limit')
       const result = new Blob([new Uint8Array(bytes).buffer], { type: job.output.type })
       await removeDirectory(instance, directory)
       assertCurrent(epoch)

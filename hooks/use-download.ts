@@ -8,15 +8,18 @@ export function useDownload() {
   const url = useRef<string | null>(null)
   const revision = useRef(0)
   const active = useRef(false)
+  const clear = useCallback(() => {
+    revision.current = revision.current + 1
+    if (url.current) URL.revokeObjectURL(url.current)
+    url.current = null
+  }, [])
   useEffect(() => {
     active.current = true
     return () => {
       active.current = false
-      revision.current = revision.current + 1
-      if (url.current) URL.revokeObjectURL(url.current)
-      url.current = null
+      clear()
     }
-  }, [])
+  }, [clear])
   const save = useCallback((blob: Blob, filename: string) => {
     if (!active.current) return
     if (url.current) URL.revokeObjectURL(url.current)
@@ -54,5 +57,5 @@ export function useDownload() {
     },
     [save]
   )
-  return { download, downloadCanvas }
+  return { download, downloadCanvas, clear }
 }
