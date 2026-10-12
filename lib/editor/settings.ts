@@ -1,11 +1,31 @@
 import { z } from 'zod'
 import { parseLrc } from './lyrics'
-import type { EditorPreferences } from './types'
+import { defaultFullCoverPreferences, type EditorPreferences } from './types'
 
 export const settingsFileLimit = 128 * 1024
 
 const preferencesSchema = z
   .strictObject({
+    // Presets predating layout selection preserve their original composition.
+    layout: z.enum(['classic', 'full-cover']).default('classic'),
+    fullCover: z
+      .strictObject({
+        accent: z.enum(['teal', 'aqua', 'mint', 'blue', 'violet']),
+        sensitivity: z.number().finite().min(0).max(100),
+        typography: z.enum(['sans', 'heading', 'mono']),
+        visualization: z.enum(['bars', 'none']),
+        pattern: z.enum(['thin', 'bold', 'segmented']),
+        colour: z.enum(['ivory', 'accent']),
+        height: z.number().finite().min(5).max(30),
+        fade: z.number().finite().min(0).max(100),
+        framing: z.enum(['fit', 'fill']),
+        positionX: z.number().finite().min(0).max(100),
+        positionY: z.number().finite().min(0).max(100),
+        // Accept and discard the retired toggle from earlier presets.
+        showDetails: z.boolean().optional()
+      })
+      .transform(({ showDetails: _showDetails, ...preferences }) => preferences)
+      .default(defaultFullCoverPreferences),
     mode: z.enum(['cover', 'spectrum', 'lighting']),
     accent: z.enum(['teal', 'aqua', 'mint', 'blue', 'violet']),
     background: z.enum(['midnight', 'glow', 'slate']),

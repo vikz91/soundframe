@@ -405,7 +405,19 @@ try {
       await writeFile(join(evidence, 'exports.json'), `${JSON.stringify(outputs, null, 2)}\n`)
     }
   }
-  const pixels = (name) => native('ffmpeg', ['-i', join(evidence, name), '-pix_fmt', 'rgb24', '-f', 'rawvideo', '-'])
+  // Preview now follows display density; compare both images at the export dimensions.
+  const pixels = (name) =>
+    native('ffmpeg', [
+      '-i',
+      join(evidence, name),
+      '-vf',
+      `scale=${width}:${height}:flags=lanczos`,
+      '-pix_fmt',
+      'rgb24',
+      '-f',
+      'rawvideo',
+      '-'
+    ])
   const textDifference = (a, b) => {
     let difference = 0
     let count = 0

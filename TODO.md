@@ -117,3 +117,28 @@ These are optional future work, not blockers for the local converter.
 
 67. [ ] Evaluate the separate [YouTube integration plan](docs/YOUTUBE_INTEGRATION_PLAN.md) after local rendering/download release gates pass; its connection, upload, and launch requirements are still planned.
 68. [ ] Revisit resolutions above 720p, additional effects, accounts/saved projects, cloud storage, and server rendering only through separate product decisions.
+
+## Planned: Lyrics Sync & Style
+
+Implementation plan: [dedicated lyrics page](docs/LYRICS_SYNC_PLAN.md). Planned work; the concept is not an implemented screen. The page and its entry point are available only when the current project's effective lyrics text is non-empty. Initial delivery stays local; AI alignment is a later evaluation.
+
+69. [ ] Add `/create/lyrics` with a non-empty lyrics gate, guarded direct visits/reloads, and an **Adjust lyrics** link in the existing Lyrics tab. Keep upload/paste in the main editor and adjustment controls on the new page.
+70. [ ] Share project/media/playback/output ownership across `/create` and `/create/lyrics`; preserve accepted state and playback position on navigation, pause on page changes, and verify back/forward, clearing, and resource disposal without duplicate players/controllers.
+71. [ ] Implement whole-song, from-this-line-onward, and selected-range offsets; slider/numeric/nudge controls; **This line starts now**; section looping; instrumental gaps; undo/redo/reset; stable cue IDs; and validation that preserves earlier cues and rejects invalid boundaries.
+72. [ ] Add explicit tap-to-time for plain lyrics, retaining incomplete timing as a draft and converting to timed mode only after all lines are valid.
+73. [ ] Download corrected LRC with baked-in effective timing and gap behavior; preserve original source and support compatible versioned settings for accepted corrections, completed timings, and templates.
+74. [ ] Add Classic subtitle, custom-font/animation Styled lyrics, and line-highlighted Karaoke column templates to the shared deterministic preview/export painter; preserve timing across template and visual-layout changes. Word highlighting remains deferred.
+75. [ ] Verify page gating/navigation, scope/gap/undo and LRC/settings round trips, real preview/export synchronisation at 320p/720p in MP4/WebM, accessibility/mobile layouts, lifecycle cleanup, and local-only processing; run `bun run check` and `bun run build` after implementation.
+76. [ ] Evaluate AI alignment against supplied lyrics in real songs, including instrumental breaks and repeated sections. Establish accuracy/language/device/cost evidence before integration; cloud processing requires a separate product/privacy decision and explicit upload opt-in. Two-anchor stretch and word karaoke are follow-ups.
+
+## Planned: Video background loops
+
+Product requirements: [video background loops PRD](docs/VIDEO_LOOP_PRD.md). Planned work; video backgrounds are not implemented or verified. Keep cover art/song information and local processing, with Single video first, then Start + repeating Loop + End. Three-clip segments are 5–10 seconds each; the final partial repetition may be shorter. Existing release evidence does not establish video decode/export performance or device safety.
+
+77. [ ] Prove bounded video decoding and timestamp selection for preview/export using real MP4/H.264 sources and the shared painter; establish per-file/total input limits, decode budgets, capability errors, and desktop/physical-device performance evidence without increasing existing export allocation guards.
+78. [ ] Add accepted local video slots, thumbnails, in/out trimming, source/segment validation, and replace/remove through shared file/loading utilities. Preserve accepted assets on failed replacement and dispose stale loads, video resources, object URLs, and working frames.
+79. [ ] Add Artwork / Single video / Three clips background selection independently of layout/visualisation; retain foreground cover art, song details, and lyrics, and add independent video fit/fill/position, dimming, accessible trimming, and reduced-motion preview behavior.
+80. [ ] Deliver Single video repetition and final trimming, absolute-frame preview/export mapping, separate default one-second opening/closing composition fades, ignored clip audio, and cancellable bounded frame preparation. Verify this phase before adding Three clips.
+81. [ ] Add Start/Loop/End slots with 5–10-second selected segments, an outro anchored to song end, exact repeat/remainder calculation, timeline summary, seam/transition previews, and export blocking for missing clips or insufficient song duration. Preserve normal speed and the selected song soundtrack.
+82. [ ] Extend media-free settings with documented compatibility, legacy Artwork defaults, validated trim/framing/dimming/fade preferences, explicit file reselection and missing-media recovery; freeze accepted assets/timing at export start and retain existing result/cancellation/expiry behavior.
+83. [ ] Add meaningful regressions for clip/timeline boundaries, fades, source in-points, settings, replacement/cancellation/cleanup, and retained prior results. Extend real browser/decoded-output verification for numbered-frame fixtures, silent clip audio, lyrics/visualisations, seeking, MP4/WebM at 320p/720p, full seven-minute timing, accessibility, privacy, and physical-device budgets; run `bun run check` and `bun run build` after implementation.

@@ -8,7 +8,14 @@ import { WorkflowStepper } from '@/components/audioframe/workflow-stepper'
 import { MediaFileCard } from '@/components/audioframe/media-file-card'
 import { PlaybackControls, formatPlaybackTime } from '@/components/audioframe/playback-controls'
 import { PreviewFrame } from '@/components/audioframe/preview-frame'
-import { ColourPicker, ModePicker, RangeField, TypefaceSelect } from '@/components/audioframe/style-controls'
+import {
+  ColourPicker,
+  LayoutPicker,
+  ModePicker,
+  RangeField,
+  TypefaceSelect
+} from '@/components/audioframe/style-controls'
+import { FullCoverControls } from '@/components/audioframe/full-cover-controls'
 import { LyricsControls, SongDetailsFields } from '@/components/audioframe/text-controls'
 import {
   ExportFormatPicker,
@@ -151,6 +158,13 @@ export function MediaWorkspace() {
     if ('lyricsText' in patch || 'lyricsMode' in patch) lyricsFile.clear()
     setPreferences({ ...effectivePreferences, ...patch })
   }
+  function updateAppearance(patch: Partial<Pick<EditorPreferences, 'sensitivity' | 'typography'>>) {
+    if (preferences.layout === 'full-cover') {
+      updatePreferences({ fullCover: { ...preferences.fullCover, ...patch } })
+    } else updatePreferences(patch)
+  }
+  const appearance = preferences.layout === 'full-cover' ? preferences.fullCover : preferences
+
   function selectAudio(file: File) {
     setPlaybackError(null)
     setCurrentTime(0)
@@ -243,37 +257,67 @@ export function MediaWorkspace() {
           <TabsTrigger value="lyrics">Lyrics</TabsTrigger>
         </TabsList>
         <TabsContent value="style" className="space-y-6 pt-5">
-          <ModePicker value={preferences.mode} onValueChange={(mode) => updatePreferences({ mode })} />
-          <ColourPicker
-            label="Accent colour"
-            options={accentColours}
-            value={preferences.accent}
-            onValueChange={(accent) => {
-              const value = accentColours.find((option) => option.value === accent)?.value
-              if (value) updatePreferences({ accent: value })
-            }}
-          />
-          <ColourPicker
-            label="Background"
-            options={backgroundColours}
-            value={preferences.background}
-            onValueChange={(background) => {
-              const value = backgroundColours.find((option) => option.value === background)?.value
-              if (value) updatePreferences({ background: value })
-            }}
-          />
-          <RangeField
-            label="Sensitivity"
-            value={preferences.sensitivity}
-            onValueChange={(sensitivity) => updatePreferences({ sensitivity })}
-            hint="Adjusts the response to your audio."
-          />
+          <LayoutPicker value={preferences.layout} onValueChange={(layout) => updatePreferences({ layout })} />
+          {preferences.layout === 'classic' ? (
+            <>
+              <ModePicker value={preferences.mode} onValueChange={(mode) => updatePreferences({ mode })} />
+              <ColourPicker
+                label="Accent colour"
+                options={accentColours}
+                value={preferences.accent}
+                onValueChange={(accent) => {
+                  const value = accentColours.find((option) => option.value === accent)?.value
+                  if (value) updatePreferences({ accent: value })
+                }}
+              />
+              <ColourPicker
+                label="Background"
+                options={backgroundColours}
+                value={preferences.background}
+                onValueChange={(background) => {
+                  const value = backgroundColours.find((option) => option.value === background)?.value
+                  if (value) updatePreferences({ background: value })
+                }}
+              />
+            </>
+          ) : (
+            <>
+              <FullCoverControls
+                value={preferences.fullCover}
+                onValueChange={(fullCover) => updatePreferences({ fullCover })}
+              />
+              {preferences.mode === 'lighting' ? (
+                <p className="text-xs leading-5 text-muted-foreground">
+                  Lighting is available in Classic. Switch back to restore your lighting settings.
+                </p>
+              ) : null}
+              {preferences.fullCover.visualization === 'bars' && preferences.fullCover.colour === 'accent' ? (
+                <ColourPicker
+                  label="Accent colour"
+                  options={accentColours}
+                  value={preferences.fullCover.accent}
+                  onValueChange={(accent) => {
+                    const value = accentColours.find((option) => option.value === accent)?.value
+                    if (value) updatePreferences({ fullCover: { ...preferences.fullCover, accent: value } })
+                  }}
+                />
+              ) : null}
+            </>
+          )}
+          {preferences.layout === 'classic' || preferences.fullCover.visualization === 'bars' ? (
+            <RangeField
+              label="Sensitivity"
+              value={appearance.sensitivity}
+              onValueChange={(sensitivity) => updateAppearance({ sensitivity })}
+              hint="Adjusts the response to your audio."
+            />
+          ) : null}
           <TypefaceSelect
-            value={preferences.typography}
-            onValueChange={(typography) => updatePreferences({ typography })}
+            value={appearance.typography}
+            onValueChange={(typography) => updateAppearance({ typography })}
           />
         </TabsContent>
-        <TabsContent value="text" className="pt-5">
+        <TabsContent value="text" className="space-y-5 pt-5">
           <SongDetailsFields value={preferences.details} onValueChange={(details) => updatePreferences({ details })} />
         </TabsContent>
         <TabsContent value="lyrics" className="space-y-4 pt-5">
@@ -455,8 +499,8 @@ export function MediaWorkspace() {
             </PreviewFrame>
             {playbackError ? <Notice tone="danger" title={playbackError} /> : null}
             <p className="text-xs leading-5 text-muted-foreground">
-              Spectrum and Lighting follow your audio. Seeking uses the audio timeline. Reduced motion keeps reactive
-              effects still.
+              Visualizations follow your audio. Seeking uses the audio timeline. Reduced motion keeps reactive effects
+              still.
             </p>
           </div>
         </EditorShell>

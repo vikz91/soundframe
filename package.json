@@ -1,6 +1,6 @@
 {
   "name": "audioframe-web",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "private": true,
   "scripts": {
     "dev": "bun run ffmpeg:assets && bunx --bun next dev",

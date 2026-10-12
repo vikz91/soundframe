@@ -10,6 +10,55 @@ import { SelectionCards } from './selection-card'
 import { visualModes, type VisualMode, type ColourOption, type Typography } from '@/lib/audioframe-design'
 import { cn } from '@/lib/utils'
 
+export function LayoutPicker({
+  value,
+  onValueChange,
+  disabled
+}: {
+  value: 'classic' | 'full-cover'
+  onValueChange: (value: 'classic' | 'full-cover') => void
+  disabled?: boolean
+}) {
+  const artwork = 'bg-gradient-to-br from-primary/70 to-primary/20'
+  return (
+    <SelectionCards
+      label="Layout"
+      value={value}
+      onValueChange={onValueChange}
+      disabled={disabled}
+      className="grid-cols-2 gap-2 [&_label]:flex-col [&_label]:px-3 [&_[data-slot=radio-group-item]]:sr-only"
+      options={[
+        {
+          value: 'classic',
+          label: 'Classic',
+          description: 'Cover, text and effects.',
+          visual: (
+            <span aria-hidden="true" className="flex aspect-video items-center gap-2 rounded-control bg-muted p-3">
+              <span className={cn('aspect-square w-1/3 rounded-sm', artwork)} />
+              <span className="flex-1 space-y-2">
+                <span className="block h-1 rounded bg-foreground/50" />
+                <span className="block h-1 w-2/3 rounded bg-foreground/20" />
+              </span>
+            </span>
+          )
+        },
+        {
+          value: 'full-cover',
+          label: 'Full cover',
+          description: 'Artwork with bottom bars.',
+          visual: (
+            <span aria-hidden="true" className={cn('flex aspect-video items-end gap-1 rounded-control p-3', artwork)}>
+              {[20, 45, 30, 65, 40, 25, 50, 35].map((height, index) => (
+                <span key={index} className="flex-1 rounded-sm bg-foreground/80" style={{ height: `${height}%` }} />
+              ))}
+            </span>
+          )
+        }
+      ]}
+    />
+  )
+}
+
 export function ModePicker({
   value,
   onValueChange,
