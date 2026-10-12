@@ -24,7 +24,7 @@ The v0 goal is a free tool for desktop and capable mobile browsers, hosted on Ve
 
 ## Project status
 
-**Local media preview, video encoding, and output downloads are implemented.** `/` is the homepage, with **Create a video** opening `/create` and a separate link to the sample prototype. `/create` accepts real audio and artwork, renders Cover/Spectrum/Lighting with plain or timed LRC lyrics, imports/exports JSON settings, and generates MP4 or WebM videos locally. `/prototype` remains a separate sample-only simulation.
+**Local media preview, video encoding, and output downloads are implemented.** `/` is the homepage, with **Create a video** opening `/create` and a separate link to the sample prototype. `/create` accepts real audio and artwork, offers Classic (Cover/Spectrum/Lighting) and Full cover (Bars/None) layouts with song details and plain or timed LRC lyrics, imports/exports JSON settings, and generates MP4 or WebM videos locally. `/prototype` remains a separate sample-only simulation.
 
 Encoding uses one lazy FFmpeg.wasm worker with bounded Canvas batches. The editor reports progress and approximate ETA, supports cancellation/retry, and retains the previous successful video until replacement or expiry. See the [TODO tracker](TODO.md), [product decisions](docs/V0_DECISIONS.md), and [media architecture](docs/MEDIA_PIPELINE_ARCHITECTURE.md) for implementation and remaining release gates.
 
@@ -32,7 +32,9 @@ Initial encoding verification on 12 October 2026 recorded `bun run check` passin
 
 The later resolution update adds default 320p and optional 720p for both formats. Short 720p Spectrum exports passed codec/audio/full-decode checks, and a four-minute 720p Spectrum MP4 passed exact frame-count, 30 fps, matching audio/video duration, and complete decoding checks. Settings compatibility and a 390 px layout were verified; checks passed with 119 tests and the production build passed. See the [resolution verification and remaining release gates](TODO.md#release-gates).
 
-Latest release validation on 12 October 2026 completed all six seven-minute **320p** exports, each with 12,600 frames, correct stereo codecs, full decoding, timeline timestamp checks, and audio markers every 30 seconds. MP4 took 50.8–60.5 seconds and WebM took 106.3–133.3 seconds on M1/16 GiB Chrome 154. All-mode short 720p exports, local production UI checks, and real exports on the supplied Vercel URL also passed. The 320 px navigation overflow was fixed locally. [Release validation](docs/RELEASE_VALIDATION.md) records evidence, repeatable tools, memory observations and blocked physical-device/account-quota gates.
+Latest release validation on 12 October 2026 completed all twelve seven-minute **Classic** exports across 320p/720p, Cover/Spectrum/Lighting, and MP4/WebM, each with 12,600 frames, correct stereo codecs, full decoding, timeline timestamp checks, and audio markers every 30 seconds. All-mode short 720p exports, local production UI checks, and real exports on the supplied Vercel URL also passed. The 320 px navigation overflow was fixed locally. [Release validation](docs/RELEASE_VALIDATION.md) records evidence, repeatable tools, memory observations and blocked physical-device/account-quota gates.
+
+Full cover has short MP4/WebM export evidence at both resolutions. After removing the details visibility toggle and improving preview density and metadata typography, the 320p Full cover suite and a Classic Cover MP4 regression passed again; `bun run check` and `bun run build` also passed. Full cover seven-minute exports, complete pattern/lyric export coverage, and physical-device validation remain open. See the [Full cover tracker](TODO.md#completed-full-cover-layout-and-sharper-preview).
 
 ## The workflow
 
@@ -41,23 +43,28 @@ Latest release validation on 12 October 2026 completed all six seven-minute **32
 Available now at `/create`:
 
 1. Select or drop an audio file up to **seven minutes** long and a JPG or PNG cover image.
-2. Choose **Cover**, **Spectrum**, or **Lighting** mode.
-3. Add optional song details, plain lyrics, or timed LRC lyrics; adjust colours and typography.
+2. Choose **Classic** (Cover, Spectrum, or Lighting) or **Full cover** (Bars or None). Switching layouts restores each layout's appearance choices.
+3. Add optional song details, plain lyrics, or timed LRC lyrics; adjust colours and typography. Full cover retains song details and lyrics; leave individual detail fields empty to omit them.
 4. Play, pause, seek, and adjust volume while previewing the composition.
 5. Choose **320p** or **720p** in Output preferences, select **MP4** or **WebM**, export, preview the generated video, and download it locally. Both resolutions use **30 fps**; 320p is the default and exports faster.
 6. Export settings as JSON to reuse them later. Importing settings requires confirmation and preserves the selected audio and artwork.
 
-| Capability       | Current implementation or remaining target                                       |
-| ---------------- | -------------------------------------------------------------------------------- |
-| Audio input      | MP3, M4A, WAV, or the audio track from MP4; actual contents/decode validated     |
-| Artwork          | JPG or PNG; actual dimensions/decode validated                                   |
-| Visuals          | Cover artwork, frequency-driven Spectrum, and waveform-driven Lighting           |
-| Text             | Song title, album, artist, website, static lyrics, and timed LRC                 |
-| Canvas preview   | **320p (568 × 320)** or **720p (1280 × 720)** at **30 fps**; 320p is the default |
-| Presets          | Strict version-1 JSON settings; media files are selected separately              |
-| MP4 output       | H.264 video with AAC stereo audio                                                |
-| WebM output      | VP8 video with Opus stereo audio                                                 |
-| Export lifecycle | Up to seven minutes, one export at a time, progress, ETA, and cancellation       |
+| Capability       | Current implementation or remaining target                                              |
+| ---------------- | --------------------------------------------------------------------------------------- |
+| Audio input      | MP3, M4A, WAV, or the audio track from MP4; actual contents/decode validated            |
+| Artwork          | JPG or PNG; actual dimensions/decode validated                                          |
+| Visuals          | Classic: Cover, Spectrum, Lighting. Full cover: artwork background with Bars or None    |
+| Text             | Song title, album, artist, website, static lyrics, and timed LRC                        |
+| Canvas preview   | Display-density Canvas, capped at 1920 pixels wide, using the shared 30 fps composition |
+| Video resolution | **320p (568 × 320)** by default or **720p (1280 × 720)**, both at **30 fps**            |
+| Presets          | Strict version-1 JSON settings; media files are selected separately                     |
+| MP4 output       | H.264 video with AAC stereo audio                                                       |
+| WebM output      | VP8 video with Opus stereo audio                                                        |
+| Export lifecycle | Up to seven minutes, one export at a time, progress, ETA, and cancellation              |
+
+### Layouts and song details
+
+Full cover offers **Thin**, **Bold**, or **Segmented** bottom bars, **Ivory** or **Accent** colour, sensitivity, maximum bar height (5–30% of the frame), and an adjustable bottom fade. **Fit artwork** keeps the whole cover over a softened artwork background; **Fill frame** crops to fill the video and provides horizontal/vertical positioning. Lighting is available in Classic. Title, artist, album, and website appear above the artwork; lyrics remain above the bars. Full cover uses stronger metadata weights and a sharp shadow, while the preview adapts to display width and pixel density. Export text is still rasterised at the selected video resolution.
 
 ### Input limits and lyrics
 
@@ -67,7 +74,7 @@ Artwork must be non-empty and at most **12 MiB**, **16 million pixels**, and **8
 
 Plain and timed lyrics are limited to **20,000 characters**. LRC accepts timestamps such as `[00:03]` or `[00:03.125]`, repeated timestamps on a line, metadata tags, and one signed millisecond offset between -420000 and 420000. Positive offset advances cues; equal timestamps use the last source occurrence. Empty timed cues clear the text. Enhanced word timing is unsupported. Imported `.lrc` files must be non-empty and at most **256 KiB**.
 
-JSON settings must be non-empty and at most **128 KiB**, with the shape `{ "version": 1, "preferences": { ... } }`. Preferences include output format and resolution. Older version-1 presets without a resolution import as **320p**; unsupported resolutions are rejected. The strict schema rejects unsupported versions, unknown keys, media references, and credentials. Song-detail fields are limited to **200 characters** each. See the [settings schema](lib/editor/settings.ts) for supported values.
+JSON settings must be non-empty and at most **128 KiB**, with the shape `{ "version": 1, "preferences": { ... } }`. Preferences include layout, independent Classic/Full cover appearance choices, output format, and resolution. Older version-1 presets without layout import as **Classic**, and those without resolution import as **320p**; unsupported values are rejected. The retired `fullCover.showDetails` boolean is accepted and discarded, so it cannot hide populated fields and is omitted from new presets. The strict schema rejects unsupported versions, other unknown keys, media references, and credentials. Song-detail fields are limited to **200 characters** each. See the [settings schema](lib/editor/settings.ts) for supported values.
 
 ### Privacy and device support
 
@@ -77,7 +84,7 @@ Generated video Blobs and URLs remain available for repeat downloads until **Cle
 
 Download names use the song title and optional artist, for example `Morning Light - River - audioframe.mp4`. An empty title becomes `Untitled track`. Unsafe filename characters are removed or replaced, and names are limited to 255 UTF-8 bytes. The result keeps the filename, format, and resolution captured at export start; later preference edits do not relabel an existing video.
 
-Modern desktop and capable mobile browsers are the target. Keep the app open and in the foreground during export. Seven-minute 320p exports have desktop evidence in every mode and both formats. Older or low-spec phones may be unsupported; physical mobile performance, practical device limits and full-length 720p calibration still require testing.
+Modern desktop and capable mobile browsers are the target. Keep the app open and in the foreground during export. Seven-minute Classic exports have desktop evidence in every mode and both formats at 320p and 720p. Older or low-spec phones may be unsupported; physical mobile performance, practical device limits and Full cover full-length validation still require testing.
 
 ## Get started
 
@@ -128,7 +135,7 @@ The TypeScript upgrade required no application-code or strict compiler-option ch
 
 ### Git hooks and versioning
 
-Oxlint uses `.oxlintrc.json`; `.oxlintrc.type-aware.json` adds semantic TypeScript checks through tsgolint. Oxfmt uses `.oxfmtrc.json` and preserves the existing formatting style. Five Next.js/React rules use JavaScript compatibility plugins to retain checks that Oxlint does not implement natively. See the [tooling guide](docs/AGENT_GUIDE.md#linting-and-formatting) for compiler and editor support.
+Oxlint uses `.oxlintrc.json`; `.oxlintrc.type-aware.json` adds semantic TypeScript checks through tsgolint, including deprecated APIs. React and Hooks checks use native rules; a dependency-free [local rule](scripts/lint-plugin.mjs) retains the Next.js internal-navigation check. Oxfmt uses `.oxfmtrc.json` and preserves the existing formatting style. See the [tooling guide](docs/AGENT_GUIDE.md#linting-and-formatting) for coverage and compiler/editor support.
 
 `bun install` installs Husky hooks. If they are missing, run `bun run prepare`. Bun must be on your PATH.
 

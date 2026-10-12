@@ -2,9 +2,14 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useAnimationFrame } from '@/hooks/use-animation-frame'
-import { prepareComposition, renderComposition, type CompositionSnapshot } from '@/lib/editor/composition'
+import {
+  compositionSize,
+  prepareComposition,
+  renderComposition,
+  type CompositionSnapshot
+} from '@/lib/editor/composition'
 import type { EditorPreferences } from '@/lib/editor/types'
-import { videoSizes } from '@/lib/editor/resolution'
+import { previewSize } from '@/lib/editor/preview-resolution'
 import type { AudioSamples } from '@/lib/editor/audio-analysis'
 import { Notice } from '@/components/audioframe/status'
 
@@ -26,7 +31,6 @@ export function CanvasPreview({
   const reducedMotion = useRef(false)
   const [error, setError] = useState<string | null>(null)
   const [ready, setReady] = useState(false)
-  const { width, height } = videoSizes[preferences.resolution]
   useEffect(() => {
     const media = matchMedia('(prefers-reduced-motion: reduce)')
     const update = () => {
@@ -36,6 +40,39 @@ export function CanvasPreview({
     media.addEventListener('change', update)
     return () => media.removeEventListener('change', update)
   }, [])
+  useEffect(() => {
+    const element = canvas.current
+    if (!element) return
+    const resize = () => {
+      const size = previewSize(element.getBoundingClientRect().width, window.devicePixelRatio)
+      if (element.width === size.width && element.height === size.height) return
+      element.width = size.width
+      element.height = size.height
+      const current = snapshot.current
+      const context = element.getContext('2d')
+      if (current && context) {
+        renderComposition(context, current, {
+          frameIndex: Math.floor(getTime() * 30),
+          reducedMotion: reducedMotion.current
+        })
+      }
+    }
+    const observer = new ResizeObserver(resize)
+    let density = matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`)
+    const densityChanged = () => {
+      density.removeEventListener('change', densityChanged)
+      density = matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`)
+      density.addEventListener('change', densityChanged)
+      resize()
+    }
+    observer.observe(element)
+    density.addEventListener('change', densityChanged)
+    resize()
+    return () => {
+      observer.disconnect()
+      density.removeEventListener('change', densityChanged)
+    }
+  }, [getTime])
   useEffect(() => {
     let active = true
     const element = canvas.current
@@ -82,10 +119,10 @@ export function CanvasPreview({
     <>
       <canvas
         ref={canvas}
-        width={width}
-        height={height}
+        width={compositionSize.width}
+        height={compositionSize.height}
         role="img"
-        aria-label={`${preferences.mode} composition: ${preferences.details.title || 'Untitled track'}`}
+        aria-label={`${preferences.layout === 'full-cover' ? 'Full cover' : preferences.mode} composition: ${preferences.details.title || 'Untitled track'}`}
         className="h-full w-full"
       />
       {!artwork ? (

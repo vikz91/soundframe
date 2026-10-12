@@ -1,6 +1,6 @@
 {
   "name": "audioframe-web",
-  "version": "0.1.9",
+  "version": "0.1.11",
   "private": true,
   "scripts": {
     "dev": "bun run ffmpeg:assets && bunx --bun next dev",
@@ -42,13 +42,10 @@
     "zod": "^4.6.6"
   },
   "devDependencies": {
-    "@next/eslint-plugin-next": "16.4.0",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^7.1.1",
     "husky": "^9.1.7",
     "lint-staged": "^17.6.0",
     "oxfmt": "^0.72.0",

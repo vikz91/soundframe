@@ -2,6 +2,7 @@ import { ffmpegClient, type FFmpegSession } from '@/lib/ffmpeg'
 import { compositionSize, renderComposition, type CompositionSnapshot } from './composition'
 import { analysisSampleRate, createOfflineAnalysis } from './offline-analysis'
 import { videoSizes, type VideoResolution } from './resolution'
+import { needsAudioAnalysis } from './types'
 
 export const encodingLimits = {
   batchFrames: 30,
@@ -157,7 +158,7 @@ export async function encodeVideo({
       maxOutputBytes: encodingLimits.maxOutputBytes,
       process: async (session, { inputs, output }) => {
         let analysis: ReturnType<typeof createOfflineAnalysis> | null = null
-        if (snapshot.preferences.mode !== 'cover') {
+        if (needsAudioAnalysis(snapshot.preferences)) {
           await session.exec([
             '-i',
             inputs[0],

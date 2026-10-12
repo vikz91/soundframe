@@ -81,7 +81,8 @@
         "react/no-string-refs": "error",
         "react/no-unescaped-entities": "error",
         "react/no-unknown-property": "off",
-        "react/no-unsafe": "off",
+        "react/no-unsafe": ["error", { "checkAliases": true }],
+        "react/require-render-return": "error",
         "react/react-in-jsx-scope": "off",
         "import/no-anonymous-default-export": "warn",
         "jsx-a11y/alt-text": [
@@ -110,11 +111,7 @@
         "react/purity": "error",
         "react/set-state-in-render": "error",
         "react/unsupported-syntax": "warn",
-        "next-compat/no-location-assign-relative-destination": "warn",
-        "react-compat/no-deprecated": "error",
-        "react-compat/require-render-return": "error",
-        "hooks-compat/config": "error",
-        "hooks-compat/gating": "error"
+        "audioframe/no-location-assign-relative-destination": "warn"
       },
       "plugins": ["react", "import", "jsx-a11y"],
       "env": {
@@ -150,16 +147,8 @@
   ],
   "jsPlugins": [
     {
-      "name": "next-compat",
-      "specifier": "@next/eslint-plugin-next"
-    },
-    {
-      "name": "react-compat",
-      "specifier": "eslint-plugin-react"
-    },
-    {
-      "name": "hooks-compat",
-      "specifier": "eslint-plugin-react-hooks"
+      "name": "audioframe",
+      "specifier": "./scripts/lint-plugin.mjs"
     }
   ],
   "settings": {

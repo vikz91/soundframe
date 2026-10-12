@@ -1,5 +1,7 @@
 import { cn } from '@/lib/utils'
 import { Toaster } from '@/components/ui/sonner'
+import { AppVersion } from '@/components/app-version'
+import { version } from '@/package.json'
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono, IBM_Plex_Sans, Space_Grotesk } from 'next/font/google'
 import './globals.css'
@@ -83,6 +85,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
       )}
     >
       <body className="min-h-full flex flex-col">
+        <AppVersion version={version} />
         {children}
         <Toaster />
       </body>
