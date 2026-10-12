@@ -95,7 +95,7 @@ Additional quota requires a compliance audit and an approved extension. Do not a
 
 Prepare a production OAuth project, verified domain, accurate consent-screen branding, privacy policy, terms, disconnect flow, scope justification, and a demonstration of the complete user flow. Plan for applicable [OAuth verification](https://developers.google.com/identity/protocols/oauth2/production-readiness/sensitive-scope-verification) before public launch. OAuth verification and YouTube quota audits are separate processes.
 
-The current [upload reference](https://developers.google.com/youtube/v3/docs/videos/insert) says videos from unverified API projects are not restricted to private viewing. Older official guidance records a private-only restriction. Confirm actual Unlisted behavior with the intended project and channel during the prototype; do not promise visibility based only on conflicting documentation.
+Verify actual Unlisted behavior with the intended API project and channel before promising visibility. The current [upload reference](https://developers.google.com/youtube/v3/docs/videos/insert) does not establish the effective visibility available to a particular project; documentation alone does not replace a successful upload and visibility check.
 
 Before enabling uploads, update product privacy language to explain the optional transfer to YouTube and storage of connection credentials. Let users confirm applicable community-guideline compliance and made-for-kids settings; add other disclosures when their content requires them. Uploading does not exempt music or artwork from YouTube's copyright and content policies. See [YouTube developer policy guidance](https://developers.google.com/youtube/terms/developer-policies-guide).
 

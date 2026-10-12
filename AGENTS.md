@@ -9,7 +9,7 @@
 
 ## Product and code
 
-- Follow [v0 decisions](docs/V0_DECISIONS.md) for product changes: local browser processing with FFmpeg.wasm, desktop and capable mobile support, seven-minute audio, 568 × 320 at 30 fps, MP4/WebM, and no YouTube, accounts, or server media uploads.
+- Follow [v0 decisions](docs/V0_DECISIONS.md) for product changes: local browser processing with FFmpeg.wasm, desktop and capable mobile support, seven-minute audio, default 320p (568 × 320) or optional 720p (1280 × 720), both at 30 fps, MP4/WebM, and no YouTube, accounts, or server media uploads.
 - This is a Bun-managed Next.js App Router project with strict TypeScript. `package.json` and `bun.lock` are authoritative; do not introduce another lockfile.
 - Keep routes and layouts server-rendered by default. Put browser APIs and interactive media controls behind focused client boundaries; load heavy media code only when needed.
 - Reuse `components/ui`, `@/lib/utils`, existing CSS tokens, and installed dependencies. Consult [the dependency and workflow guide](docs/AGENT_GUIDE.md) only for the packages or tools involved.

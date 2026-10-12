@@ -8,6 +8,34 @@ import { mkdir, mkdtemp, writeFile, rm } from 'node:fs/promises'
 import { tmpdir, cpus, arch, totalmem } from 'node:os'
 import { resolve, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { createHash } from 'node:crypto'
+
+const duration = Number(process.env.ENCODING_DURATION ?? 2.35)
+const resolution = process.env.ENCODING_RESOLUTION ?? '320p'
+assert.ok(Number.isFinite(duration) && duration >= 2.35 && duration <= 420, 'duration must be 2.35–420 seconds')
+assert.ok(['320p', '720p'].includes(resolution), 'resolution must be 320p or 720p')
+const [width, height] = resolution === '720p' ? [1280, 720] : [568, 320]
+const scale = width / 568
+const timeout = Number(process.env.ENCODING_TIMEOUT_MS ?? 3600000)
+const baseURL = process.env.ENCODING_BASE_URL ?? 'http://localhost:3000/create'
+const recoveryChecks = process.env.ENCODING_RECOVERY !== '0'
+const modes = (process.env.ENCODING_MODES ?? 'Cover,Spectrum,Lighting').split(',')
+const formats = (process.env.ENCODING_FORMATS ?? 'MP4,WebM').split(',')
+assert.ok(modes.length && modes.every((mode) => ['Cover', 'Spectrum', 'Lighting'].includes(mode)))
+assert.ok(formats.length && formats.every((format) => ['MP4', 'WebM'].includes(format)))
+assert.ok(Number.isFinite(timeout) && timeout > 0, 'timeout must be positive milliseconds')
+const boundaryTimes = [1, 2, 60, 120, 210, 300, 419].filter((time) => time < duration)
+const referenceFrames = [
+  ...new Set(boundaryTimes.flatMap((time) => [time * 30 - 1, time * 30]).concat(Math.ceil(duration * 30) - 1))
+]
+const lyrics =
+  '[00:00]START\n' +
+  boundaryTimes
+    .map(
+      (time, i) =>
+        `[${String(Math.floor(time / 60)).padStart(2, '0')}:${String(time % 60).padStart(2, '0')}]${i % 2 ? 'TWO' : 'ONE'}`
+    )
+    .join('\n')
 
 const { chromium } = await import(
   process.env.PLAYWRIGHT_MODULE ? pathToFileURL(process.env.PLAYWRIGHT_MODULE).href : 'playwright'
@@ -15,12 +43,12 @@ const { chromium } = await import(
 const evidence = resolve(process.env.ENCODING_EVIDENCE_DIR ?? 'output/encoding')
 const fixtures = await mkdtemp(join(tmpdir(), 'audioframe-encoding-'))
 await mkdir(evidence, { recursive: true })
-const native = (binary, args) => execFileSync(binary, ['-v', 'error', ...args], { maxBuffer: 32 * 1024 * 1024 })
+const native = (binary, args) => execFileSync(binary, ['-v', 'error', ...args], { maxBuffer: 64 * 1024 * 1024 })
 native('ffmpeg', [
   '-f',
   'lavfi',
   '-i',
-  String.raw`aevalsrc=0.35*sin(2*PI*440*t)*gte(t\,0.5)|0.3*sin(2*PI*660*t)*gte(t\,0.5):s=44100:d=2.35`,
+  String.raw`aevalsrc=0.35*sin(2*PI*440*t)*gte(mod(t\,30)\,0.5)|0.3*sin(2*PI*660*t)*gte(mod(t\,30)\,0.5):s=32000:d=${duration}`,
   '-y',
   join(fixtures, 'audio.wav')
 ])
@@ -41,6 +69,7 @@ const browser = await chromium.launch({
 })
 try {
   const page = await browser.newPage({ acceptDownloads: true })
+  page.setDefaultTimeout(30000)
   const cdp = await browser.newBrowserCDPSession()
   let peakBrowserRSS = 0
   let sampling = false
@@ -78,13 +107,16 @@ try {
     engineRequests = [],
     outputs = []
   page.on('pageerror', (error) => errors.push(error.message))
+  page.on('console', (message) => {
+    if (message.text().startsWith('Encoding progress:')) console.log(message.text())
+  })
   page.on('request', (request) => {
     if (['POST', 'PUT', 'PATCH'].includes(request.method()) && !request.url().includes('__nextjs'))
       mediaUploads.push(request.url())
     if (request.url().includes('ffmpeg-core.wasm')) engineRequests.push(request.url())
   })
   await page.addInitScript(() => {
-    window.encodingResources = { created: [], revoked: [], peakHeap: 0 }
+    window.encodingResources = { created: [], revoked: [], peakHeap: 0, heartbeatGaps: [], stages: [] }
     const create = URL.createObjectURL.bind(URL),
       revoke = URL.revokeObjectURL.bind(URL)
     URL.createObjectURL = (blob) => {
@@ -102,14 +134,40 @@ try {
         performance.memory?.usedJSHeapSize ?? 0
       )
     }, 100)
+    let previous = performance.now()
+    setInterval(() => {
+      const now = performance.now()
+      if (window.encodingResources.measuring) window.encodingResources.heartbeatGaps.push(now - previous)
+      previous = now
+      const percent = Number(
+        document.querySelector('[aria-label="Video export progress"]')?.getAttribute('aria-valuenow') ?? 0
+      )
+      if (window.encodingResources.measuring && percent >= (window.encodingResources.lastLoggedPercent ?? 0) + 10) {
+        window.encodingResources.lastLoggedPercent = Math.floor(percent / 10) * 10
+        console.log(`Encoding progress: ${Math.round(percent)}%`)
+      }
+      const stage = document.querySelector('[aria-label="Export stages"] [aria-current="step"]')?.textContent?.trim()
+      const stages = window.encodingResources.stages
+      if (window.encodingResources.measuring && stage && stages.at(-1)?.stage !== stage) stages.push({ stage, ms: now })
+    }, 50)
   })
-  await page.goto(process.env.ENCODING_BASE_URL ?? 'http://localhost:3000/create')
+  await page.goto(baseURL)
+  const capabilities = await page.evaluate(() => ({
+    secureContext: isSecureContext,
+    crossOriginIsolated,
+    sharedArrayBuffer: typeof SharedArrayBuffer !== 'undefined',
+    hardwareConcurrency: navigator.hardwareConcurrency,
+    deviceMemoryGiB: navigator.deviceMemory ?? null
+  }))
   await page.locator('input[type=file]').nth(0).setInputFiles(join(fixtures, 'audio.wav'))
   await page.locator('input[type=file]').nth(1).setInputFiles(join(fixtures, 'artwork.png'))
   await page.getByRole('button', { name: 'Create your frame', exact: true }).click()
   assert.equal(engineRequests.length, 0, 'preview must not load WASM')
-  for (const mode of ['Cover', 'Spectrum', 'Lighting']) {
-    if (mode !== 'Cover') await page.getByRole('button', { name: 'Back to editing', exact: true }).click()
+  await page.getByRole('button', { name: 'Output preferences', exact: true }).click()
+  await page.getByRole('radio', { name: resolution, exact: true }).check()
+  await page.getByRole('button', { name: 'Back to editing', exact: true }).click()
+  for (const [modeIndex, mode] of modes.entries()) {
+    if (modeIndex) await page.getByRole('button', { name: 'Back to editing', exact: true }).click()
     await page.getByRole('tab', { name: 'Style', exact: true }).click()
     await page.getByRole('radio', { name: mode, exact: true }).press('Space')
     assert.equal(await page.getByRole('radio', { name: mode, exact: true }).getAttribute('aria-checked'), 'true')
@@ -117,9 +175,9 @@ try {
     await page.getByRole('textbox', { name: 'Song title', exact: true }).fill('Real encoding acceptance')
     await page.getByRole('tab', { name: 'Lyrics', exact: true }).click()
     await page.getByRole('tab', { name: 'Timed LRC', exact: true }).click()
-    await page.getByRole('textbox', { name: 'Timed lyrics', exact: true }).fill('[00:00]START\n[00:01]ONE\n[00:02]TWO')
+    await page.getByRole('textbox', { name: 'Timed lyrics', exact: true }).fill(lyrics)
     if (mode === 'Cover') {
-      for (const frame of [29, 30, 59, 60, 70]) {
+      for (const frame of referenceFrames) {
         await page.locator('audio').evaluate(
           (audio, time) => {
             audio.currentTime = time
@@ -133,11 +191,21 @@ try {
       }
     }
     await page.getByRole('button', { name: 'Output preferences', exact: true }).click()
-    for (const format of ['MP4', 'WebM']) {
+    await page.getByRole('radio', { name: resolution, exact: true }).check()
+    for (const format of formats) {
       await page.getByRole('radio', { name: format, exact: true }).check()
       const oldURL = (await page.locator('video').count()) ? await page.locator('video').getAttribute('src') : null
       console.log(`Exporting ${mode} ${format}`)
       const started = Date.now()
+      await page.evaluate(() => {
+        Object.assign(window.encodingResources, {
+          measuring: true,
+          lastLoggedPercent: 0,
+          heartbeatGaps: [],
+          stages: [],
+          started: performance.now()
+        })
+      })
       await page.getByRole('button', { name: /^(Export video|Export another video)$/ }).click()
       await page.waitForFunction(
         (old) => {
@@ -148,7 +216,7 @@ try {
           )
         },
         oldURL,
-        { timeout: 180000 }
+        { timeout }
       )
       assert.equal(
         await page.getByText('Export could not finish', { exact: true }).count(),
@@ -156,6 +224,23 @@ try {
         await page.locator('main').innerText()
       )
       const seconds = (Date.now() - started) / 1000
+      const observations = await page.evaluate(() => {
+        const resources = window.encodingResources
+        resources.measuring = false
+        const gaps = resources.heartbeatGaps.sort((a, b) => a - b)
+        return {
+          mainThreadHeartbeat: {
+            samples: gaps.length,
+            p95Ms: gaps[Math.floor(gaps.length * 0.95)] ?? null,
+            maximumMs: gaps.at(-1) ?? null
+          },
+          stages: resources.stages.map((item, i, stages) => ({
+            stage: item.stage,
+            seconds: ((stages[i + 1]?.ms ?? performance.now()) - item.ms) / 1000
+          })),
+          peakJSHeapBytes: resources.peakHeap
+        }
+      })
       const download = page.waitForEvent('download')
       await page.getByRole('button', { name: 'Download video', exact: true }).click()
       const artifact = join(fixtures, `${mode.toLowerCase()}.${format.toLowerCase()}`)
@@ -168,11 +253,35 @@ try {
       assert.equal(v.codec_name, format === 'MP4' ? 'h264' : 'vp8')
       assert.equal(a.codec_name, format === 'MP4' ? 'aac' : 'opus')
       assert.equal(a.channels, 2)
-      assert.equal(v.width, 568)
-      assert.equal(v.height, 320)
+      assert.equal(v.width, width)
+      assert.equal(v.height, height)
       assert.equal(v.r_frame_rate, '30/1')
-      assert.equal(Number(v.nb_read_frames), 71, 'partial final chunk must have exactly eleven frames')
-      assert.ok(Math.abs(Number(metadata.format.duration) - 2.35) < 0.04)
+      assert.equal(Number(v.nb_read_frames), Math.ceil(duration * 30), 'every frame must survive final assembly')
+      assert.ok(Math.abs(Number(metadata.format.duration) - duration) < 0.04)
+      // Decode the complete file, then inspect every video packet timestamp for drift/gaps.
+      native('ffmpeg', ['-i', artifact, '-f', 'null', '-'])
+      const packets = JSON.parse(
+        native('ffprobe', [
+          '-select_streams',
+          'v:0',
+          '-show_packets',
+          '-show_entries',
+          'packet=pts_time',
+          '-of',
+          'json',
+          artifact
+        ]).toString()
+      ).packets
+      assert.equal(packets.length, Math.ceil(duration * 30))
+      const firstPTS = Number(packets[0].pts_time)
+      assert.ok(Math.abs(firstPTS) < 0.04)
+      let maximumTimestampError = 0
+      for (let index = 0; index < packets.length; index++)
+        maximumTimestampError = Math.max(
+          maximumTimestampError,
+          Math.abs(Number(packets[index].pts_time) - firstPTS - index / 30)
+        )
+      assert.ok(maximumTimestampError < 0.002, 'complete timeline must not accumulate concat drift')
       const samples = native('ffmpeg', [
         '-i',
         artifact,
@@ -194,57 +303,89 @@ try {
       }
       assert.ok(rms(0.05, 0.3) < 0.005, 'initial silence must remain silent')
       assert.ok(rms(0.6, 0.9) > 0.1, 'audio onset must remain aligned')
+      const audioMarkers = []
+      for (let marker = 0; marker + 0.9 < duration; marker += 30) {
+        const silence = rms(marker + 0.05, marker + 0.3),
+          tone = rms(marker + 0.6, marker + 0.9)
+        assert.ok(silence < 0.005 && tone > 0.1, `audio marker ${marker}s must remain aligned`)
+        audioMarkers.push({ seconds: marker, silenceRMS: silence, toneRMS: tone })
+      }
       console.log(`Verified codecs/audio ${mode} ${format}`)
-      const playback = await page.locator('video').evaluate(async (video) => {
-        await video.play()
-        await new Promise((resolve) => setTimeout(resolve, 300))
-        video.pause()
-        video.currentTime = 2.1
-        await new Promise((resolve, reject) => {
-          video.addEventListener('seeked', resolve, { once: true })
-          setTimeout(() => reject(new Error('Generated video did not seek')), 5000)
-        })
-        return { time: video.currentTime, width: video.videoWidth, duration: video.duration }
-      })
-      assert.equal(playback.width, 568)
+      const playback = await page.locator('video').evaluate(
+        async (video, seekTimes) => {
+          await video.play()
+          await new Promise((resolve) => setTimeout(resolve, 300))
+          video.pause()
+          const seeks = []
+          for (const time of seekTimes) {
+            await new Promise((resolve, reject) => {
+              const timer = setTimeout(() => reject(new Error('Generated video did not seek')), 5000)
+              video.addEventListener(
+                'seeked',
+                () => {
+                  clearTimeout(timer)
+                  resolve()
+                },
+                { once: true }
+              )
+              video.currentTime = time
+            })
+            seeks.push(video.currentTime)
+          }
+          return { time: video.currentTime, width: video.videoWidth, duration: video.duration, seeks }
+        },
+        [2.1, ...boundaryTimes.filter((time) => time > 2).map((time) => time + 0.1)]
+      )
+      assert.equal(playback.width, width)
       assert.ok(playback.time >= 2)
       if (mode === 'Cover') {
         native('ffmpeg', [
           '-i',
           artifact,
           '-vf',
-          String.raw`select=eq(n\,29)+eq(n\,30)+eq(n\,59)+eq(n\,60)+eq(n\,70)`,
+          'select=' + referenceFrames.map((frame) => `eq(n\\,${frame})`).join('+'),
           '-fps_mode',
           'vfr',
           '-y',
           join(evidence, `${format.toLowerCase()}-frame-%d.png`)
         ])
       }
+      const visualMarkers = []
       if (mode !== 'Cover') {
-        const frame = (index) =>
-          native('ffmpeg', [
-            '-i',
-            artifact,
-            '-vf',
-            `select=eq(n\\,${index})`,
-            '-frames:v',
-            '1',
-            '-pix_fmt',
-            'rgb24',
-            '-f',
-            'rawvideo',
-            '-'
-          ])
-        const before = frame(0),
-          after = frame(30)
-        let maximum = 0
-        for (let y = 185; y < 280; y++)
-          for (let x = 34; x < 534; x++)
-            for (let channel = 0; channel < 3; channel++) {
-              const index = (y * 568 + x) * 3 + channel
-              maximum = Math.max(maximum, Math.abs(before[index] - after[index]))
-            }
-        assert.ok(maximum > 10, 'reactive effects must respond to audio outside the lyric region')
+        const markerFrames = audioMarkers.flatMap((marker) => [marker.seconds * 30 + 3, marker.seconds * 30 + 24])
+        const crop = {
+          x: Math.ceil(34 * scale),
+          y: Math.ceil(185 * scale),
+          width: Math.floor(500 * scale),
+          height: Math.floor(95 * scale)
+        }
+        const frames = native('ffmpeg', [
+          '-i',
+          artifact,
+          '-vf',
+          'select=' +
+            markerFrames.map((index) => `eq(n\\,${index})`).join('+') +
+            `,crop=${crop.width}:${crop.height}:${crop.x}:${crop.y}:exact=1`,
+          '-fps_mode',
+          'vfr',
+          '-pix_fmt',
+          'rgb24',
+          '-f',
+          'rawvideo',
+          '-'
+        ])
+        const size = crop.width * crop.height * 3
+        assert.equal(frames.length, size * markerFrames.length)
+        for (let marker = 0; marker < audioMarkers.length; marker++) {
+          let maximum = 0
+          for (let index = 0; index < size; index++)
+            maximum = Math.max(
+              maximum,
+              Math.abs(frames[marker * size * 2 + index] - frames[(marker * 2 + 1) * size + index])
+            )
+          assert.ok(maximum > 10, `reactive effects must follow audio at ${audioMarkers[marker].seconds}s`)
+          visualMarkers.push({ seconds: audioMarkers[marker].seconds, maximumPixelChange: maximum })
+        }
       }
       outputs.push({
         mode,
@@ -254,47 +395,65 @@ try {
         video: v.codec_name,
         audio: a.codec_name,
         frames: Number(v.nb_read_frames),
-        duration: Number(metadata.format.duration)
+        duration: Number(metadata.format.duration),
+        maximumTimestampError,
+        audioMarkers,
+        visualMarkers,
+        playback,
+        observations
       })
+      await writeFile(join(evidence, 'exports.json'), `${JSON.stringify(outputs, null, 2)}\n`)
     }
   }
   const pixels = (name) => native('ffmpeg', ['-i', join(evidence, name), '-pix_fmt', 'rgb24', '-f', 'rawvideo', '-'])
   const textDifference = (a, b) => {
     let difference = 0
-    for (let y = 150; y < 175; y++)
-      for (let x = 278; x < 420; x++)
-        for (let c = 0; c < 3; c++) difference += Math.abs(a[(y * 568 + x) * 3 + c] - b[(y * 568 + x) * 3 + c])
-    return difference / (25 * 142 * 3)
+    let count = 0
+    for (let y = Math.ceil(150 * scale); y < 175 * scale; y++)
+      for (let x = Math.ceil(278 * scale); x < 420 * scale; x++)
+        for (let c = 0; c < 3; c++) {
+          difference += Math.abs(a[(y * width + x) * 3 + c] - b[(y * width + x) * 3 + c])
+          count++
+        }
+    return difference / count
   }
-  for (const format of ['mp4', 'webm'])
-    for (const [encoded, frame, previous] of [
-      [2, 30, 29],
-      [4, 60, 59]
-    ]) {
+  for (const format of modes.includes('Cover') ? formats.map((format) => format.toLowerCase()) : [])
+    for (const time of boundaryTimes) {
+      const frame = time * 30,
+        previous = frame - 1,
+        encoded = referenceFrames.indexOf(frame) + 1
       const actual = pixels(`${format}-frame-${encoded}.png`)
       const expected = textDifference(actual, pixels(`reference-${frame}.png`))
       const stale = textDifference(actual, pixels(`reference-${previous}.png`))
       assert.ok(expected < 5 && expected < stale * 0.7, 'lyrics must switch on the absolute chunk-boundary frame')
     }
-  const retained = await page.locator('video').getAttribute('src')
-  await page.getByRole('button', { name: 'Export another video', exact: true }).click()
-  await page.getByRole('button', { name: 'Cancel export', exact: true }).click()
-  await page.getByText('Export cancelled', { exact: true }).waitFor()
-  assert.equal(await page.locator('video').getAttribute('src'), retained)
-  // Force a real FFmpeg asset-load failure after cancellation terminated the engine.
-  await page.route('**/ffmpeg/core/ffmpeg-core.wasm', (route) => route.abort())
-  await page.getByRole('button', { name: 'Export another video', exact: true }).click()
-  await page.getByText('Export could not finish', { exact: true }).waitFor({ timeout: 30000 })
-  assert.equal(await page.locator('video').getAttribute('src'), retained)
-  await page.unroute('**/ffmpeg/core/ffmpeg-core.wasm')
-  await page.getByRole('button', { name: 'Retry export', exact: true }).click()
-  await page.waitForFunction(
-    (old) =>
-      document.querySelector('video')?.getAttribute('src') &&
-      document.querySelector('video').getAttribute('src') !== old,
-    retained,
-    { timeout: 180000 }
-  )
+  if (recoveryChecks) {
+    const retained = await page.locator('video').getAttribute('src')
+    await page.getByRole('button', { name: 'Export another video', exact: true }).click()
+    // Cancel after at least one encoded batch, rather than only during preparation.
+    await page.waitForFunction(
+      () => Number(document.querySelector('[aria-label="Video export progress"]')?.getAttribute('aria-valuenow')) >= 10,
+      undefined,
+      { timeout: 30000 }
+    )
+    await page.getByRole('button', { name: 'Cancel export', exact: true }).click()
+    await page.getByText('Export cancelled', { exact: true }).waitFor()
+    assert.equal(await page.locator('video').getAttribute('src'), retained)
+    // Force a real FFmpeg asset-load failure after cancellation terminated the engine.
+    await page.route('**/ffmpeg/core/ffmpeg-core.wasm', (route) => route.abort())
+    await page.getByRole('button', { name: 'Export another video', exact: true }).click()
+    await page.getByText('Export could not finish', { exact: true }).waitFor({ timeout: 30000 })
+    assert.equal(await page.locator('video').getAttribute('src'), retained)
+    await page.unroute('**/ffmpeg/core/ffmpeg-core.wasm')
+    await page.getByRole('button', { name: 'Retry export', exact: true }).click()
+    await page.waitForFunction(
+      (old) =>
+        document.querySelector('video')?.getAttribute('src') &&
+        document.querySelector('video').getAttribute('src') !== old,
+      retained,
+      { timeout }
+    )
+  }
   await page.screenshot({ path: join(evidence, 'desktop-result.png'), fullPage: true })
   await page.setViewportSize({ width: 390, height: 844 })
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
@@ -317,6 +476,29 @@ try {
   assert.deepEqual(errors, [])
   assert.deepEqual(mediaUploads, [])
   const evidenceReport = {
+    testedAt: new Date().toISOString(),
+    baseURL,
+    inputDuration: duration,
+    recoveryChecks,
+    modes,
+    formats,
+    resolution,
+    dimensions: { width, height },
+    environment: 'Desktop Chrome; viewport emulation is not physical mobile evidence',
+    capabilities,
+    engine: {
+      package: '@ffmpeg/core 0.12.10',
+      threads: 1,
+      wasmSHA256: createHash('sha256')
+        .update(
+          await (
+            await fetch(new URL('/ffmpeg/core/ffmpeg-core.wasm', baseURL))
+          )
+            .arrayBuffer()
+            .then((bytes) => Buffer.from(bytes))
+        )
+        .digest('hex')
+    },
     browser: await browser.version(),
     platform: process.platform,
     device: { cpu: cpus()[0]?.model, arch: arch(), systemMemoryBytes: totalmem() },
@@ -332,7 +514,26 @@ try {
     engineLoads: engineRequests.length
   }
   await writeFile(join(evidence, 'verification.json'), `${JSON.stringify(evidenceReport, null, 2)}\n`)
+  await rm(join(evidence, 'failure.json'), { force: true })
   console.log(JSON.stringify(evidenceReport, null, 2))
+} catch (error) {
+  await writeFile(
+    join(evidence, 'failure.json'),
+    JSON.stringify(
+      {
+        testedAt: new Date().toISOString(),
+        baseURL,
+        inputDuration: duration,
+        resolution,
+        modes,
+        formats,
+        error: String(error)
+      },
+      null,
+      2
+    ) + '\n'
+  )
+  throw error
 } finally {
   await browser.close()
   await rm(fixtures, { recursive: true, force: true })

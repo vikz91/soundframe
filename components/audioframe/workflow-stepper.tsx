@@ -32,7 +32,7 @@ export function WorkflowStepper({
         {steps.map((step, index) => (
           <li
             key={step.value}
-            className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4"
+            className="flex min-w-0 flex-1 items-center gap-1 sm:gap-4"
             aria-current={current === step.value ? 'step' : undefined}
           >
             {index ? <span aria-hidden="true" className="h-px min-w-2 flex-1 bg-border" /> : null}
@@ -42,7 +42,7 @@ export function WorkflowStepper({
                 disabled={disabled || disabledSteps.includes(step.value)}
                 onClick={() => onStepChange(step.value)}
                 aria-current={current === step.value ? 'step' : undefined}
-                className="gap-2 px-2"
+                className="gap-1 px-1 sm:gap-2 sm:px-2"
               >
                 <StepNumber index={index} active={index === active} complete={index < active} />
                 <span>{step.label}</span>
@@ -67,7 +67,7 @@ function StepNumber({ index, active, complete }: { index: number; active: boolea
     <span
       aria-hidden="true"
       className={cn(
-        'flex size-8 shrink-0 items-center justify-center rounded-full border text-xs font-semibold',
+        'flex size-6 shrink-0 items-center justify-center rounded-full border text-xs font-semibold sm:size-8',
         active || complete
           ? 'border-primary bg-primary text-primary-foreground'
           : 'border-border bg-muted text-muted-foreground'

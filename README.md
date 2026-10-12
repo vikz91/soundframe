@@ -18,17 +18,21 @@ Turn music, cover art, and lyrics into videos with audio-reactive visuals—righ
 
 ## The idea
 
-A simple way to turn an audio track into a shareable video. Choose your artwork, add a title or lyrics, and pick a visual style. Audioframe is being built for local browser processing: your media stays on your device, with no account or server rendering required.
+A simple way to turn an audio track into a shareable video. Choose your artwork, add a title or lyrics, and pick a visual style. Audioframe processes media locally in your browser: your media stays on your device, with no account or server rendering required.
 
 The v0 goal is a free tool for desktop and capable mobile browsers, hosted on Vercel. Availability remains subject to hosting quotas and device capabilities.
 
 ## Project status
 
-**Local media preview, video encoding, and output downloads are implemented.** `/create` accepts real audio and artwork, renders Cover/Spectrum/Lighting with plain or timed LRC lyrics, imports/exports JSON settings, and generates MP4 or WebM videos locally. `/prototype` remains a separate sample-only simulation.
+**Local media preview, video encoding, and output downloads are implemented.** `/` is the homepage, with **Create a video** opening `/create` and a separate link to the sample prototype. `/create` accepts real audio and artwork, renders Cover/Spectrum/Lighting with plain or timed LRC lyrics, imports/exports JSON settings, and generates MP4 or WebM videos locally. `/prototype` remains a separate sample-only simulation.
 
 Encoding uses one lazy FFmpeg.wasm worker with bounded Canvas batches. The editor reports progress and approximate ETA, supports cancellation/retry, and retains the previous successful video until replacement or expiry. See the [TODO tracker](TODO.md), [product decisions](docs/V0_DECISIONS.md), and [media architecture](docs/MEDIA_PIPELINE_ARCHITECTURE.md) for implementation and remaining release gates.
 
-On 12 October 2026, `bun run check` passed with 113 tests and `bun run build` passed. Six short desktop exports passed codec, 568 × 320 / 30 fps, audio, playback, seeking, partial-chunk, and lyric-boundary checks. The acceptance suite passed against development and production builds. Browser checks also covered cancellation, forced failure/retry, expiry, URL cleanup, and a 390 px result layout. [Encoding evidence](TODO.md#completed-real-encoding-and-output-lifecycle) distinguishes these results from pending seven-minute and physical Android/iPhone validation.
+Initial encoding verification on 12 October 2026 recorded `bun run check` passing with 113 tests and `bun run build` passing. Six short desktop exports passed codec, 568 × 320 / 30 fps, audio, playback, seeking, partial-chunk, and lyric-boundary checks. The acceptance suite passed against development and production builds. Browser checks also covered cancellation, forced failure/retry, expiry, URL cleanup, and a 390 px result layout. These are historical results for that stage; see [encoding evidence](TODO.md#completed-real-encoding-and-output-lifecycle) for the checks and remaining release gates.
+
+The later resolution update adds default 320p and optional 720p for both formats. Short 720p Spectrum exports passed codec/audio/full-decode checks, and a four-minute 720p Spectrum MP4 passed exact frame-count, 30 fps, matching audio/video duration, and complete decoding checks. Settings compatibility and a 390 px layout were verified; checks passed with 119 tests and the production build passed. See the [resolution verification and remaining release gates](TODO.md#release-gates).
+
+Latest release validation on 12 October 2026 completed all six seven-minute **320p** exports, each with 12,600 frames, correct stereo codecs, full decoding, timeline timestamp checks, and audio markers every 30 seconds. MP4 took 50.8–60.5 seconds and WebM took 106.3–133.3 seconds on M1/16 GiB Chrome 154. All-mode short 720p exports, local production UI checks, and real exports on the supplied Vercel URL also passed. The 320 px navigation overflow was fixed locally. [Release validation](docs/RELEASE_VALIDATION.md) records evidence, repeatable tools, memory observations and blocked physical-device/account-quota gates.
 
 ## The workflow
 
@@ -40,7 +44,7 @@ Available now at `/create`:
 2. Choose **Cover**, **Spectrum**, or **Lighting** mode.
 3. Add optional song details, plain lyrics, or timed LRC lyrics; adjust colours and typography.
 4. Play, pause, seek, and adjust volume while previewing the composition.
-5. Export **MP4** or **WebM**, preview the generated video, and download it locally.
+5. Choose **320p** or **720p** in Output preferences, select **MP4** or **WebM**, export, preview the generated video, and download it locally. Both resolutions use **30 fps**; 320p is the default and exports faster.
 6. Export settings as JSON to reuse them later. Importing settings requires confirmation and preserves the selected audio and artwork.
 
 | Capability       | Current implementation or remaining target                                       |
@@ -63,7 +67,7 @@ Artwork must be non-empty and at most **12 MiB**, **16 million pixels**, and **8
 
 Plain and timed lyrics are limited to **20,000 characters**. LRC accepts timestamps such as `[00:03]` or `[00:03.125]`, repeated timestamps on a line, metadata tags, and one signed millisecond offset between -420000 and 420000. Positive offset advances cues; equal timestamps use the last source occurrence. Empty timed cues clear the text. Enhanced word timing is unsupported. Imported `.lrc` files must be non-empty and at most **256 KiB**.
 
-JSON settings must be non-empty and at most **128 KiB**, with the shape `{ "version": 1, "preferences": { ... } }`. The strict schema rejects unsupported versions, unknown keys, media references, and credentials. Song-detail fields are limited to **200 characters** each. See the [settings schema](lib/editor/settings.ts) for supported values.
+JSON settings must be non-empty and at most **128 KiB**, with the shape `{ "version": 1, "preferences": { ... } }`. Preferences include output format and resolution. Older version-1 presets without a resolution import as **320p**; unsupported resolutions are rejected. The strict schema rejects unsupported versions, unknown keys, media references, and credentials. Song-detail fields are limited to **200 characters** each. See the [settings schema](lib/editor/settings.ts) for supported values.
 
 ### Privacy and device support
 
@@ -71,7 +75,9 @@ The current editor reads and decodes selected media locally using browser APIs. 
 
 Generated video Blobs and URLs remain available for repeat downloads until **Clear project**, page closure, or one hour after successful generation. Downloads do not extend retention; successful replacement releases the old output, while editing, cancellation, and failure preserve it. The timer is best effort while the page runs; it cannot delete files already downloaded to your device. The sample prototype simulates this lifecycle.
 
-Modern desktop and capable mobile browsers are the target. Keep the app open and in the foreground during export. Older or low-spec phones may be unsupported; mobile performance and complete seven-minute exports still require device testing.
+Download names use the song title and optional artist, for example `Morning Light - River - audioframe.mp4`. An empty title becomes `Untitled track`. Unsafe filename characters are removed or replaced, and names are limited to 255 UTF-8 bytes. The result keeps the filename, format, and resolution captured at export start; later preference edits do not relabel an existing video.
+
+Modern desktop and capable mobile browsers are the target. Keep the app open and in the foreground during export. Seven-minute 320p exports have desktop evidence in every mode and both formats. Older or low-spec phones may be unsupported; physical mobile performance, practical device limits and full-length 720p calibration still require testing.
 
 ## Get started
 
@@ -157,7 +163,7 @@ Search [existing issues](https://github.com/vikz91/soundframe/issues) first, the
 - [Bug report](https://github.com/vikz91/soundframe/issues/new?template=bug_report.yml) — reproduction steps, expected and actual behaviour, device/browser details, and optional media settings, errors, or screenshots.
 - [Feature request](https://github.com/vikz91/soundframe/issues/new?template=feature_request.yml) — the user need, proposed behaviour, alternatives, and how it fits the [v0 scope](docs/V0_DECISIONS.md).
 
-For media failures, include input format, duration, approximate size, visual mode, and output format. Share a small synthetic or public-domain sample where possible; avoid posting private recordings, credentials, or other sensitive data. The [issue chooser](https://github.com/vikz91/soundframe/issues/new/choose) also allows a blank issue for reports that do not fit either template.
+For media failures, include input format, duration, approximate size, visual mode, output format, and resolution. Share a small synthetic or public-domain sample where possible; avoid posting private recordings, credentials, or other sensitive data. The [issue chooser](https://github.com/vikz91/soundframe/issues/new/choose) also allows a blank issue for reports that do not fit either template.
 
 ## Contributing
 
@@ -169,9 +175,9 @@ A successful build or type check does not prove audio synchronisation, export pl
 
 ### GitHub automation
 
-The configured [CI workflow](.github/workflows/ci.yml) runs lint, formatting, TypeScript, tests, a production build, and a locked dependency audit on PRs and pushes to `main`. Audits also run weekly. The [PR reporter](.github/workflows/pr-status.yml) updates one comment with the check results, including fork and Dependabot PRs.
+The [CI workflow](.github/workflows/ci.yml) runs syntax/type-aware lint, formatting, TypeScript, and tests in one quality job on PRs and pushes to `main`. Locked dependency audits run when `package.json` or `bun.lock` changes, weekly, and on manual runs. Results appear in GitHub's checks; no separate PR status comment is posted.
 
-[Dependabot](.github/dependabot.yml) checks Bun packages and GitHub Actions weekly. A stable `vX.Y.Z` tag matching the package version triggers the [release workflow](.github/workflows/release.yml), which reruns CI before publishing a GitHub release with a [generated changelog](.github/release.yml). Ordinary commits bump the version locally but do not publish releases.
+[Vercel configuration](vercel.json) enables automatic builds and deployments only for `main`, with selected documentation-only changes skipped. PRs run quality checks without a production build or deployment; GitHub Actions does not build or deploy the application. [Dependabot](.github/dependabot.yml) checks Bun packages and GitHub Actions weekly. Commit hooks still bump the package version locally; tags do not automatically publish GitHub releases.
 
 ## Documentation
 

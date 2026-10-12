@@ -27,9 +27,24 @@ export function frameBatches(duration: number, resolution: VideoResolution = '32
   }))
 }
 
-const videoOptions = (format: 'mp4' | 'webm') =>
+// Five-frame 720p batches repeat keyframes more often; compress them more strongly
+// to retain the same encoded-storage guard for full-length exports.
+const videoOptions = (format: 'mp4' | 'webm', resolution: VideoResolution) =>
   format === 'mp4'
-    ? ['-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23', '-pix_fmt', 'yuv420p', '-bf', '0', '-g', '30']
+    ? [
+        '-c:v',
+        'libx264',
+        '-preset',
+        'ultrafast',
+        '-crf',
+        resolution === '720p' ? '30' : '23',
+        '-pix_fmt',
+        'yuv420p',
+        '-bf',
+        '0',
+        '-g',
+        '30'
+      ]
     : ['-c:v', 'libvpx', '-deadline', 'realtime', '-cpu-used', '8', '-b:v', '1000k', '-pix_fmt', 'yuv420p', '-g', '30']
 
 /** Await each transfer/encode before producing the next memory-bounded RGBA batch. */
@@ -78,7 +93,7 @@ export async function encodeFrames(
       '-an',
       '-frames:v',
       String(batch.count),
-      ...videoOptions(format),
+      ...videoOptions(format, snapshot.preferences.resolution),
       '-fs',
       String(encodingLimits.maxPartsBytes - partsBytes + 1),
       '-y',

@@ -1,10 +1,10 @@
-# Audio2Video v0 Decisions
+# Audioframe v0 Decisions
 
 Status: Locked product decisions, agreed on 12 October 2026.
 
-Audio2Video converts an audio file and cover artwork into a video with optional text, lyrics, and audio-reactive visualisations. v0 runs media processing locally in the browser, supports desktop and capable mobile devices, and provides local downloads without application accounts.
+Audioframe converts an audio file and cover artwork into a video with optional text, lyrics, and audio-reactive visualisations. v0 runs media processing locally in the browser, supports desktop and capable mobile devices, and provides local downloads without application accounts.
 
-These decisions define the target product. As of 12 October 2026, `/create` implements real local-media validation, playback, Canvas preview, lyrics, and settings; real MP4/WebM encoding and generated-video downloads are implemented with bounded Canvas batches. Complete seven-minute and physical-device verification remain pending. `/prototype` provides the separate simulated experience. See the [implementation tracker](../TODO.md) for verified results and release gaps.
+These decisions define the target product. As of 12 October 2026, `/create` implements real local-media validation, playback, Canvas preview, lyrics, settings, bounded MP4/WebM encoding and generated-video downloads. The complete seven-minute 320p desktop matrix is verified; physical devices and full-length 720p calibration remain pending. `/prototype` provides the separate simulated experience. See the [implementation tracker](../TODO.md) and [release validation](RELEASE_VALIDATION.md) for evidence and release gaps.
 
 ## User flow
 
@@ -76,9 +76,9 @@ Do not use a click on Download as proof that the file was successfully saved. Cl
 
 ## Settings import and export
 
-Use a versioned JSON preset containing layout, appearance, text, lyrics, and export preferences. Validate imported presets.
+Use a versioned JSON preset containing layout, appearance, text, lyrics, and export preferences. The strict version-1 schema includes output format and resolution; older version-1 presets without resolution default to 320p. Validate imported presets and reject unsupported resolutions.
 
-Exclude audio and artwork from presets. Users must select those files again after importing settings.
+Exclude audio and artwork from presets. Confirm preference replacement when importing; preserve any audio and artwork already selected in the current session. Users must select media again when opening a new session because presets do not contain those files.
 
 ## Scope boundaries
 

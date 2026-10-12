@@ -2,7 +2,7 @@
 
 Updated: 12 October 2026.
 
-The visual prototype, real local-media input/composition stage, and real encoding/output lifecycle are implemented. Device and full-length release validation remain pending. Checked items below describe implemented work; preview verification does not establish exported-video or mobile release readiness.
+The visual prototype, real local-media input/composition stage, and real encoding/output lifecycle are implemented. The complete seven-minute 320p desktop matrix is verified. Physical-device validation, full-length 720p calibration, and authenticated hosting allowances remain pending. Checked items below describe implemented or tested work; desktop and viewport evidence do not establish mobile release readiness.
 
 ## Completed foundations
 
@@ -11,16 +11,16 @@ The visual prototype, real local-media input/composition stage, and real encodin
 3. [x] Create Audioframe branding, concept references, and screen/action designs. See the [concept gallery](output/concepts/audioframe-v0-2026-10-12/index.html).
 4. [x] Create shared semantic design tokens, shadcn/Base UI atoms, and reusable Audioframe controls. See [tokens](app/design-tokens.css) and the [design-system showcase](app/demo/design-system/showcase.tsx).
 5. [x] Establish Bun, strict TypeScript, linting, formatting, and hook/media/tooling checks.
-6. [x] Implement a shared lazy FFmpeg.wasm wrapper with sequential worker reuse, overlap protection, cancellation, failure recovery, and temporary-file cleanup. Lifecycle tests use a mocked engine; real output acceptance remains pending. See [wrapper](lib/ffmpeg.ts) and [usage](docs/FFMPEG.md).
+6. [x] Implement a shared lazy FFmpeg.wasm wrapper with sequential worker reuse, overlap protection, cancellation, failure recovery, and temporary-file cleanup. Wrapper lifecycle tests use a mocked engine; a separate regression executes the real WASM core, and short real-output acceptance is recorded below. See [wrapper](lib/ffmpeg.ts) and [usage](docs/FFMPEG.md).
 7. [x] Add reusable hooks for file picking/loading, native audio playback, animation, and local downloads. See the reuse table in [repository instructions](AGENTS.md#shared-browser-hooks-and-wrappers).
 8. [x] Retain the existing cover-art and visualisation demos separately from the prototype.
 
 ## Completed visual prototype
 
-Implementation: [sample workspace](components/prototype/workspace.tsx) at `/prototype`, [session controller](lib/prototype/controller.ts), and [fixtures](lib/prototype/fixtures.ts). The Home retains explicit sample-only disclosures; `/create` now opens the real local-media editor.
+Implementation: [sample workspace](components/prototype/workspace.tsx) at `/prototype`, [session controller](lib/prototype/controller.ts), and [fixtures](lib/prototype/fixtures.ts). The current Home promotes the real local-media editor at `/create`, with local-processing Help and a separate, clearly identified sample-prototype entry.
 
-9. [x] Implement server-rendered Home and workspace route wrappers. The sample-only workspace now lives at `/prototype`; `/create` opens the real editor and discloses that video export is pending.
-10. [x] Add Home composition, workflow explanation, intended supported formats, Help, demo links, and the prototype entry action.
+9. [x] Implement server-rendered Home and workspace route wrappers. The sample-only workspace lives at `/prototype`; `/create` opens the real editor with working video export and downloads.
+10. [x] Add Home composition, workflow explanation, supported formats/resolutions, local-processing Help, demo links, a primary Create a video action, and a separate sample-prototype entry.
 11. [x] Keep Files, Create, Export, and Download in one mounted client workspace; selections and preferences survive view changes and reset on reload.
 12. [x] Gate Create/Export until valid sample audio and artwork are selected; visibly disable unavailable steps.
 13. [x] Implement sample selection, replacement, removal, simulated checking, inline errors, and settings import.
@@ -60,7 +60,7 @@ Implementation: [local editor](components/editor/workspace.tsx), [media validati
 37. [x] Validate/decode JPG and PNG artwork, including rotated JPEG dimensions. Apply conservative 12 MiB, 16-million-pixel, and 8192-pixel-side limits before decoding. Desktop boundary fixtures passed; mobile calibration remains a release gate under items 58–59.
 38. [x] Probe single-thread WASM/workers, local files/blob URLs, Web Audio, Canvas, font loading, and colour support; show actionable errors before proceeding.
 39. [x] Connect actual audio playback, seek, and volume through `useAudioPlayback`; handle rejection, replacement, end-of-audio, and React ref reattachment.
-40. [x] Share one deterministic 568 × 320 / 30 fps Canvas renderer with an absolute frame-index timeline and explicit assets/audio samples for preview and future encoding.
+40. [x] Share one deterministic 568 × 320 logical Canvas composition at 30 fps, with an absolute frame-index timeline and explicit assets/audio samples for preview and encoding. The painter scales to the selected 320p or 720p Canvas dimensions.
 41. [x] Drive Spectrum from frequency samples and Lighting from waveform RMS; reuse analysis buffers and paint outside React state.
 42. [x] Parse and validate real LRC with repeated timestamps, up to three fractional digits, signed millisecond offset, stable equal-time ordering, empty cues, and seek lookup. Keep plain lyrics static; reject enhanced word timing.
 43. [x] Freeze loaded fonts, decoded artwork references, semantic colours, metadata, and lyric cues into a composition snapshot. Tests confirm identical preview/export draw operations for identical inputs; short encoded-video verification is recorded below; full-timeline/device synchronisation remains pending under item 57.
@@ -84,23 +84,30 @@ Implementation: [bounded encoder](lib/editor/encode.ts), [offline analysis](lib/
 54. [x] Apply one-hour output retention to real Blobs/object URLs; release resources on expiry, clear, replacement, and disposal. Download clicks must not reset the timer.
 55. [x] Keep processing local and lazy-load heavy media code; verify that input and output media are never uploaded.
 
+- [x] Restore the entry WASM stack after each synchronous core command, preventing cumulative stack exhaustion during sequential exports. Asset generation rejects changed upstream bindings; the real-core regression executes 420 video commands, probing, a failed command, and recovery. See the [compatibility patch](scripts/patch-ffmpeg-core.mjs) and [regression](scripts/ffmpeg-core.test.mjs).
+- [x] Add default 320p and optional 720p selection for both formats, scale the shared painter, keep raw batches within the existing byte budget, preserve exact concat timing, retain captured-result dimensions, and support legacy version-1 settings. Resolution verification is recorded under [release gates](#release-gates).
+
 Verification on 12 October 2026 used headless Chrome 154.0.8037.98 on an Apple M1 with 16 GiB RAM. Six 2.35-second stereo exports (Cover/Spectrum/Lighting × MP4/WebM) passed FFprobe codec, 568 × 320, 30 fps, 71-frame, stereo/audio inclusion, and duration checks. Outputs were within one frame of the soundtrack duration; native Opus adds small container padding. Saved videos played and sought in Chrome; decoded audio retained silence before 0.5 seconds and sound after it. Cover lyrics changed on frames 30 and 60, checked against preview pixels on both sides of chunk boundaries; reactive effect pixels changed with the signal. Cancellation and a forced WASM-load failure preserved the previous result; retry succeeded. Background expiry removed the Blob/video/download URLs; Clear project left no tracked URLs. No media POST/PUT/PATCH requests or page errors were observed. Desktop and 390 px result screenshots are in [output/encoding](output/encoding/). `bun run check` passed with 113 tests and `bun run build` passed. The same acceptance suite also passed against the production build on a separate local server; see [production evidence](output/encoding/production/verification.json).
 
 The first cold MP4 export took about 1.3 seconds; subsequent short exports took about 0.4–0.9 seconds in the initial measurement. That run observed about 121 MiB peak JavaScript heap and 1.36 GiB aggregate browser-process RSS versus a 0.85 GiB baseline. RSS includes browser/GPU processes and shared pages; heap excludes some native/WASM allocations. These are sampled observations, not hard browser-memory guarantees or seven-minute/mobile performance claims. [Latest repeatable measurements](output/encoding/verification.json) include timing and memory values. Full-length, music-quality, Android/iPhone, and production-host verification remain open.
 
 ## Release gates
 
-56. [ ] Complete seven-minute MP4 and WebM exports for Cover, Spectrum, and Lighting; verify codecs, dimensions, frame rate, duration, and audio inclusion.
-57. [ ] Verify audio/visual/lyric synchronisation through seeking, the complete timeline, and any chunk boundaries.
-58. [ ] Benchmark representative desktop, Android, and iPhone browsers; record browser/device, engine version, timing, responsiveness, memory observations, and failures.
-59. [ ] Establish the supported device baseline and practical input/memory limits; retain the single-threaded compatibility path.
-60. [ ] Introduce multi-threading or an additional Canvas worker only if capabilities and profiling justify it; test fallback and disposal.
-61. [ ] Browser-test actual invalid files, interrupted loading, export cancellation/failure, repeated exports, expiry, downloads, and settings round trips.
-62. [ ] Recheck mobile layouts, themes, reduced motion, keyboard access, touch targets, and dialogs with real media states.
+Resolution selection added on 12 October 2026: 320p (568 × 320) remains the default; 720p (1280 × 720) is available for both formats at 30 fps. Short Spectrum exports at 720p passed codec, audio, 71-frame, final-partial-batch, and full-decode checks for MP4 and WebM; a 320p MP4 regression also passed. A four-minute synthetic Spectrum MP4 at 720p completed with exactly 7,200 frames, 30 fps, and matching 240-second video/stereo AAC audio; the saved file passed complete decoding. Concat durations derive from absolute frame boundaries to prevent timing drift from container rounding. The selector and captured-result labels, native preview dimensions, legacy settings default, 720p settings round trip, and 390 px layout were browser-checked. `bun run check` passed with 119 tests and `bun run build` passed. This is desktop evidence; seven-minute/all-mode and physical-device release gates below remain open.
+
+56. [x] Complete seven-minute MP4 and WebM exports for Cover, Spectrum, and Lighting at the default 568 × 320; all six passed codecs, 30 fps, 12,600 frames, duration, stereo audio, and complete decoding. Full-length optional 720p calibration remains part of item 59.
+57. [x] Verify desktop audio/visual/lyric synchronisation: all video packet timestamps, audio markers every 30 seconds, forward/late seeking through 419.1 seconds and Cover lyric pixels before/after boundaries through 419 seconds. Extended seven-minute Spectrum/Lighting MP4 checks passed all 14 recurring visual/audio markers. Short 720p checks cover partial five-frame chunks. Physical-device validation remains under items 58–59.
+58. [ ] Benchmark representative desktop, Android, and iPhone browsers; desktop M1/16 GiB Chrome 154 timing, engine/hash, responsiveness and sampled memory are recorded. Physical Android/iPhone runs are blocked: no attached Android device or available iPhone tooling.
+59. [ ] Establish the supported device baseline and practical input/memory limits; the tested desktop configuration is recorded, but minimum hardware/mobile limits and full-length 720p calibration remain unproven. Retain the current allocation guards and single-threaded compatibility path.
+60. [x] Review profiling before introducing multi-threading or another Canvas worker. Seven-minute desktop runs retained a responsive 50 ms heartbeat (p95 51.9–59 ms, maximum 65.6 ms); no additional worker is justified by these observations. The single-thread path passed without SharedArrayBuffer/isolation; cancellation/failure/retry/disposal are covered. Alternate cores remain deferred, with no alternate path to fall back from.
+61. [x] Browser-test real invalid files, delayed native file-read cancellation, export cancellation/failure/retry, repeated exports, completion-anchored expiry, playable downloads and strict JSON settings round trips. Desktop production and live Vercel evidence are linked below.
+62. [x] Recheck real-media layouts at 320, 390, 844 and 1280 px, portrait/landscape, light/dark, all modes, reduced motion, keyboard tabs/radios/seek/volume, 44 px primary targets and mobile dialog focus/Escape/reset. Fix narrow-screen workflow navigation overflow; emulation is not physical-device evidence.
 63. [x] Add focused regression coverage plus an opt-in real browser/FFprobe acceptance script for both formats, all modes, partial chunks, audio onset, lyric boundary pixels, cancellation, failure/retry, expiry, and cleanup. Complete-device release evidence is still required.
-64. [ ] Run `bun run check`, `bun run build`, and integrated browser/device checks after production integration; retain evidence and screenshots.
+64. [ ] Run `bun run check`, `bun run build`, and integrated browser/device checks after production integration; local production browser evidence/screenshots and build pass are retained. Physical-device integration remains blocked under item 58; final quality results are recorded in the validation report.
 65. [x] Update README status/workflow and developer documentation for the completed sample prototype and real input/preview stage, conservative input limits, recorded verification, and pending production release gates. Keep them current as encoding and device validation progress.
-66. [ ] Verify Vercel production asset loading, capability behavior, and hosting allowances before an explicitly authorized release/deployment.
+66. [ ] Verify Vercel production asset loading, capability behavior, and hosting allowances before an explicitly authorized release/deployment. The supplied live URL passed all six short real exports, asset MIME/security/cache/hash checks, single-thread capability behavior, cancellation/retry and cleanup. Public hosting limits were reviewed; account plan, eligibility and remaining quotas require authenticated Vercel access, unavailable here. No deployment was performed.
+
+Release validation on 12 October 2026: [seven-minute 320p evidence](output/release/320p/verification.json), [all-mode short 720p evidence](output/release/720p-short/verification.json), [production UI checks/screenshots](output/release/ui-production/verification.json), [live Vercel browser evidence](output/release/vercel/verification.json), and [hosting assets](output/release/hosting/verification.json). See [release validation](docs/RELEASE_VALIDATION.md) for measured timing, memory limits, reproducible commands and remaining gates. Evidence stays local under the ignored `output/` directory. Seven-minute synthetic outputs took 50.762–60.528 seconds for MP4 and 106.312–133.297 seconds for WebM. The run sampled 193.1 MiB peak JavaScript heap and 1.48 GiB aggregate browser RSS versus a 0.82 GiB baseline, with no page errors, media uploads or tracked URLs remaining after clear. These are observations on one desktop, not mobile memory guarantees.
 
 ## Beyond v0
 
