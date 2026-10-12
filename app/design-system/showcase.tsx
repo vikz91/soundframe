@@ -229,10 +229,10 @@ export function DesignSystemShowcase() {
                 {dark ? 'Light theme' : 'Dark theme'}
               </Button>
               <Link
-                href="/demo"
+                href="/"
                 className="inline-flex min-h-control items-center rounded-control px-3 text-sm text-primary focus-visible:outline-2 focus-visible:outline-ring"
               >
-                Back to demos
+                Open editor
               </Link>
             </div>
           </div>

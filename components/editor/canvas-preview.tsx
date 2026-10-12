@@ -5,7 +5,7 @@ import { useAnimationFrame } from '@/hooks/use-animation-frame'
 import { prepareComposition, renderComposition, type CompositionSnapshot } from '@/lib/editor/composition'
 import type { EditorPreferences } from '@/lib/editor/types'
 import { videoSizes } from '@/lib/editor/resolution'
-import type { AudioSamples } from '@/app/demo/viz/audio-analysis'
+import type { AudioSamples } from '@/lib/editor/audio-analysis'
 import { Notice } from '@/components/audioframe/status'
 
 export function CanvasPreview({

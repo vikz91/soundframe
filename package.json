@@ -1,6 +1,6 @@
 {
   "name": "audioframe-web",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "private": true,
   "scripts": {
     "dev": "bun run ffmpeg:assets && bunx --bun next dev",
@@ -12,14 +12,13 @@
     "lint:staged": "lint-staged",
     "commit:check": "bun scripts/pre-commit.mjs",
     "test:hooks": "bun test scripts/pre-commit.test.mjs",
-    "test:media": "bun test scripts/ffmpeg-core.test.mjs lib/ffmpeg.test.mjs lib/browser-files.test.mjs lib/local-file.test.mjs lib/local-media.test.mjs lib/media-capabilities.test.mjs lib/editor/*.test.mjs app/demo/viz/audio-analysis.test.mjs",
+    "test:media": "bun test scripts/ffmpeg-core.test.mjs lib/ffmpeg.test.mjs lib/browser-files.test.mjs lib/local-file.test.mjs lib/local-media.test.mjs lib/media-capabilities.test.mjs lib/editor/*.test.mjs",
     "test:tooling": "bun test scripts/quality-tools.test.mjs scripts/vercel-ignore-build.test.mjs",
-    "test:prototype": "bun test lib/prototype/*.test.mjs",
     "ffmpeg:assets": "bun scripts/sync-ffmpeg-assets.mjs",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
     "typecheck": "bunx --bun next typegen && tsc --noEmit --incremental false",
-    "check": "bun run lint && bun run format:check && bun run typecheck && bun run lint:types && bun run test:hooks && bun run test:media && bun run test:tooling && bun run test:prototype",
+    "check": "bun run lint && bun run format:check && bun run typecheck && bun run lint:types && bun run test:hooks && bun run test:media && bun run test:tooling",
     "prepare": "bun run ffmpeg:assets && husky"
   },
   "dependencies": {

@@ -1,11 +1,10 @@
 'use client'
 
-import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { EditorHeader, EditorShell } from '@/components/audioframe/editor-shell'
-import { WorkflowStepper, type WorkflowStep } from '@/components/audioframe/workflow-stepper'
+import { WorkflowStepper } from '@/components/audioframe/workflow-stepper'
 import { MediaFileCard } from '@/components/audioframe/media-file-card'
 import { PlaybackControls, formatPlaybackTime } from '@/components/audioframe/playback-controls'
 import { PreviewFrame } from '@/components/audioframe/preview-frame'
@@ -21,14 +20,15 @@ import {
 import { PresetActions } from '@/components/audioframe/preset-actions'
 import { ConfirmDialog } from '@/components/audioframe/confirm-dialog'
 import { Notice, StatusBadge } from '@/components/audioframe/status'
-import { ThemeToggle } from '@/components/prototype/theme-toggle'
+import { ThemeToggle } from '@/components/audioframe/theme-toggle'
 import { accentColours, backgroundColours } from '@/lib/audioframe-design'
 import { readArtworkFile, releaseArtworkFile } from '@/lib/local-media'
 import { checkMediaCapabilities } from '@/lib/media-capabilities'
 import { useAudioPlayback } from '@/hooks/use-audio-playback'
 import { useLocalFile } from '@/hooks/use-local-file'
 import { useDownload } from '@/hooks/use-download'
-import { LocalAudioAnalyser } from '@/app/demo/viz/audio-analysis'
+import { useWorkflowPhase } from '@/hooks/use-workflow-phase'
+import { LocalAudioAnalyser } from '@/lib/editor/audio-analysis'
 import { defaultEditorPreferences, type EditorPreferences } from '@/lib/editor/types'
 import { readSettingsFile, readLyricsFile } from '@/lib/editor/files'
 import { serializeSettings } from '@/lib/editor/settings'
@@ -41,7 +41,6 @@ export function MediaWorkspace() {
   const [video] = useState(() => createVideoExportController())
   const output = useSyncExternalStore(video.subscribe, video.getSnapshot, video.getServerSnapshot)
   const busy = output.status === 'running'
-  const [view, setView] = useState<WorkflowStep>('files')
   const [preferences, setPreferences] = useState(defaultEditorPreferences)
   const [capabilities, setCapabilities] = useState<{ supported: boolean; issues: string[] } | null>(null)
   const [playbackError, setPlaybackError] = useState<string | null>(null)
@@ -78,6 +77,15 @@ export function MediaWorkspace() {
   )
   const unavailable = !capabilities?.supported || busy
   const canExport = available && !lyricsError && !lyricsFile.reading && !settingsFile.reading && !settingsFile.value
+  const {
+    phase: view,
+    navigate,
+    reset: resetPhase
+  } = useWorkflowPhase({
+    available,
+    hasResult: Boolean(output.result),
+    busy
+  })
   const getTime = useCallback(() => audioElement.current?.currentTime ?? 0, [])
   const readAnalysis = useCallback(() => analysis.current?.read() ?? null, [])
   useEffect(() => {
@@ -192,7 +200,7 @@ export function MediaWorkspace() {
     settingsFile.clear()
     lyricsFile.clear()
     setPreferences(defaultEditorPreferences())
-    setView('files')
+    resetPhase()
   }
 
   const header = (
@@ -205,10 +213,8 @@ export function MediaWorkspace() {
       }
       steps={
         <WorkflowStepper
-          current={available || output.result ? view : 'files'}
-          onStepChange={(next) => {
-            if (!busy && (next === 'files' || available || (next === 'export' && output.result))) setView(next)
-          }}
+          current={view}
+          onStepChange={navigate}
           disabled={busy}
           disabledSteps={available ? [] : output.result ? ['create'] : ['create', 'export']}
         />
@@ -317,12 +323,7 @@ export function MediaWorkspace() {
     <main className="mx-auto w-full max-w-editor flex-1 px-5 py-6 sm:px-8 sm:py-8">
       <div className="mb-7 flex flex-wrap items-center justify-between gap-3">
         <StatusBadge tone="info">Local media editor · Browser video export</StatusBadge>
-        <div className="flex flex-wrap items-center gap-3">
-          <Link href="/prototype" className="text-sm text-primary underline underline-offset-4">
-            Try the sample prototype
-          </Link>
-          <ThemeToggle />
-        </div>
+        <ThemeToggle />
       </div>
       <h1 className="font-heading text-page-title font-semibold tracking-tight">Bring your sound.</h1>
       <p className="mt-3 mb-7 text-sm leading-6 text-muted-foreground">
@@ -353,7 +354,7 @@ export function MediaWorkspace() {
           className="hidden"
         />
       ) : null}
-      {(!available && !(view === 'export' && output.result) ? 'files' : view) === 'files' ? (
+      {view === 'files' ? (
         <div className="space-y-6">
           {header}
           <div className="grid gap-5 md:grid-cols-2">
@@ -408,7 +409,7 @@ export function MediaWorkspace() {
             Current safeguards: audio up to 64 MiB and 7 minutes; artwork up to 12 MiB, 16 million pixels, and 8192
             pixels per side. These limits are provisional; mobile device testing is pending.
           </p>
-          <Button disabled={!available} onClick={() => setView('create')}>
+          <Button disabled={!available} onClick={() => navigate('create')}>
             Create your frame
           </Button>
         </div>
@@ -421,7 +422,7 @@ export function MediaWorkspace() {
               <span className="text-xs text-muted-foreground">
                 Local preview · {videoSizeLabel(preferences.resolution)}
               </span>
-              <Button onClick={() => setView('export')}>Output preferences</Button>
+              <Button onClick={() => navigate('export')}>Output preferences</Button>
             </>
           }
         >
@@ -490,7 +491,7 @@ export function MediaWorkspace() {
               cancelled={output.status === 'cancelled'}
               message={output.error ?? 'Your inputs, settings, and previous video are still here.'}
               onRetry={startExport}
-              onBack={() => setView('create')}
+              onBack={() => navigate('create')}
             />
           ) : null}
           {!busy && output.result ? (
@@ -511,7 +512,7 @@ export function MediaWorkspace() {
               }
               expired={!output.result.blob}
               onDownload={downloadVideo}
-              onBack={() => setView('create')}
+              onBack={() => navigate('create')}
               onExportSettings={exportSettings}
               onClear={() => setClearOpen(true)}
               onExportAgain={startExport}
@@ -532,7 +533,7 @@ export function MediaWorkspace() {
               <Button variant="outline" onClick={exportSettings}>
                 Export settings
               </Button>
-              <Button variant="outline" onClick={() => setView('create')}>
+              <Button variant="outline" onClick={() => navigate('create')}>
                 Back to editing
               </Button>
             </div>

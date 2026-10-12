@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     template: '%s | Audioframe'
   },
   description:
-    'Meet Audioframe: turn music, cover art, and lyrics into videos with audio-reactive visuals. Private browser processing and MP4/WebM exports. In development.',
+    'Turn music, cover art, and lyrics into videos with audio-reactive visuals. Free browser processing and local MP4/WebM downloads.',
   applicationName: 'Audioframe',
   icons: {
     icon: [
@@ -54,7 +54,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: 'Audioframe - Turn Audio into Video',
-    description: 'Your sound. Your artwork. Your story. A browser-based audio-to-video creator, in development.',
+    description: 'A free audio-to-video creator. Process your files locally in your browser and download MP4 or WebM.',
     siteName: 'Audioframe',
     type: 'website',
     locale: 'en_US',
@@ -63,7 +63,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Audioframe - Turn Audio into Video',
-    description: 'Your sound. Your artwork. Your story. A browser-based audio-to-video creator, in development.',
+    description: 'A free audio-to-video creator. Process your files locally in your browser and download MP4 or WebM.',
     images: [socialPreview]
   }
 }
