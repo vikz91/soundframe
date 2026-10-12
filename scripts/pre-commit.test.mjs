@@ -76,6 +76,7 @@ function setup(version = '0.1.0') {
 
 function enableRealStagedChecks(root) {
   for (const file of ['.lintstagedrc.json', '.oxlintrc.json']) copyFileSync(join(source, file), join(root, file))
+  copyFileSync(join(source, 'scripts/lint-plugin.mjs'), join(root, 'scripts/lint-plugin.mjs'))
   const data = manifest(root)
   data.scripts['lint:staged'] = 'lint-staged'
   writeFileSync(join(root, 'package.json'), JSON.stringify(data, null, 2) + '\n')

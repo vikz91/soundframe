@@ -4,11 +4,11 @@ Status: Locked product decisions, agreed on 12 October 2026.
 
 Audioframe converts an audio file and cover artwork into a video with optional text, lyrics, and audio-reactive visualisations. v0 runs media processing locally in the browser, supports desktop and capable mobile devices, and provides local downloads without application accounts.
 
-These decisions define the target product. As of 12 October 2026, `/create` implements real local-media validation, playback, Canvas preview, lyrics, settings, bounded MP4/WebM encoding and generated-video downloads. The complete seven-minute 320p desktop matrix is verified; physical devices and full-length 720p calibration remain pending. `/prototype` provides the separate simulated experience. See the [implementation tracker](../TODO.md) and [release validation](RELEASE_VALIDATION.md) for evidence and release gaps.
+These decisions define the target product. As of 12 October 2026, `/create` implements real local-media validation, playback, Classic/Full cover Canvas composition, lyrics, settings, bounded MP4/WebM encoding and generated-video downloads. The complete seven-minute Classic desktop matrix is verified at 320p and 720p. Full cover has short export evidence at both resolutions; its full-length/pattern/lyric matrix and physical-device benchmarks remain pending. `/prototype` provides the separate simulated experience. See the [implementation tracker](../TODO.md) and [release validation](RELEASE_VALIDATION.md) for evidence and release gaps.
 
 ## User flow
 
-Choose files → pick a visual mode → customise → preview → export → download.
+Choose files → pick a layout and visual mode → customise → preview → export → download.
 
 ## Stack and hosting
 
@@ -42,13 +42,17 @@ Timed LRC lyrics support synchronised display. Plain lyrics can appear as static
 
 ## Visual modes and customisation
 
+Choose **Classic** or **Full cover**. Classic remains the default and offers the existing modes:
+
 | Mode     | Composition                                                |
 | -------- | ---------------------------------------------------------- |
 | Cover    | Prominent cover artwork with optional text                 |
 | Spectrum | Sound bars with a small cover thumbnail                    |
 | Lighting | Audio-reactive glow or pulses with a small cover thumbnail |
 
-Provide a small set of controls for colour, background, sensitivity, and typography.
+Classic provides colour, background, sensitivity, and typography controls. Full cover uses the artwork as the background with **Bars** or **None**; Lighting remains in Classic. Bar controls are Thin/Bold/Segmented pattern, Ivory/Accent colour, sensitivity, and maximum height (5–30% of the frame). Fit artwork preserves the whole cover over a softened artwork background; Fill frame crops to fill the video with horizontal/vertical positioning. Bottom fade is adjustable. Each layout retains its own appearance choices when switching.
+
+Full cover shows nonempty song title, artist, album, and website at the top, and plain or timed lyrics above the bars. There is no details visibility toggle; empty fields omit individual details. The shared preview/export painter loads the selected metadata font weights and uses a sharp text shadow. Preview rasterisation follows display width and pixel density, capped at 1920 pixels wide; export resolution remains the selected 320p or 720p.
 
 ## Output
 
@@ -76,7 +80,7 @@ Do not use a click on Download as proof that the file was successfully saved. Cl
 
 ## Settings import and export
 
-Use a versioned JSON preset containing layout, appearance, text, lyrics, and export preferences. The strict version-1 schema includes output format and resolution; older version-1 presets without resolution default to 320p. Validate imported presets and reject unsupported resolutions.
+Use a versioned JSON preset containing layout, independent Classic/Full cover appearance choices, text, lyrics, and export preferences. The strict version-1 schema includes output format and resolution; older version-1 presets without layout default to Classic and those without resolution default to 320p. Accept and discard the retired `fullCover.showDetails` boolean; it cannot suppress populated fields and is omitted from new presets. Validate imported presets and reject unsupported values and other unknown keys.
 
 Exclude audio and artwork from presets. Confirm preference replacement when importing; preserve any audio and artwork already selected in the current session. Users must select media again when opening a new session because presets do not contain those files.
 
@@ -90,7 +94,7 @@ Future options include direct YouTube uploads, application accounts, AWS renderi
 
 Release requires evidence of:
 
-- Complete seven-minute exports in both MP4 and WebM, with the specified dimensions, frame rate, and codecs.
+- Complete seven-minute exports in both MP4 and WebM, with the specified dimensions, frame rate, and codecs, for Classic and Full cover compositions.
 - Audio and visual synchronisation throughout the exported video, including timed lyrics when supplied.
 - Acceptable memory use and rendering performance on representative desktop, Android, and iPhone browsers.
 - Working cancellation, failure handling, and temporary resource cleanup.

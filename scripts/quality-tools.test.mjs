@@ -11,12 +11,13 @@ afterEach(() => {
   for (const root of fixtures.splice(0)) rmSync(root, { recursive: true, force: true })
 })
 
-function lint(code, { typeAware = false, typeCheck = false } = {}) {
+function lint(code, { typeAware = false, typeCheck = false, filename = 'example.tsx' } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'audioframe-lint-'))
   fixtures.push(root)
   copyFileSync(join(source, '.oxlintrc.json'), join(root, '.oxlintrc.json'))
   symlinkSync(join(source, 'node_modules'), join(root, 'node_modules'), 'dir')
-  writeFileSync(join(root, 'example.tsx'), code)
+  symlinkSync(join(source, 'scripts'), join(root, 'scripts'), 'dir')
+  writeFileSync(join(root, filename), code)
   if (typeAware) {
     copyFileSync(join(source, '.oxlintrc.type-aware.json'), join(root, '.oxlintrc.type-aware.json'))
     writeFileSync(
@@ -31,7 +32,7 @@ function lint(code, { typeAware = false, typeCheck = false } = {}) {
           skipLibCheck: true,
           noEmit: true
         },
-        include: ['example.tsx']
+        include: [filename]
       })
     )
   }
@@ -43,7 +44,7 @@ function lint(code, { typeAware = false, typeCheck = false } = {}) {
       '--max-warnings=0',
       ...(typeAware ? ['-c', '.oxlintrc.type-aware.json'] : []),
       ...(typeCheck ? ['--type-check'] : []),
-      'example.tsx'
+      filename
     ],
     {
       cwd: root,
@@ -71,23 +72,82 @@ test('native lint rules retain Hooks, accessibility, Next.js, and TypeScript che
   expect(result.rules).toContain('typescript(no-explicit-any)')
 })
 
-test('compatibility plugin retains the Next.js internal-navigation check', () => {
+test('local plugin retains the Next.js internal-navigation check', () => {
   const result = lint(`export function navigate() { window.location.assign('/other') }`)
   expect(result.status).not.toBe(0)
-  expect(result.rules).toContain('next-compat(no-location-assign-relative-destination)')
+  expect(result.rules).toContain('audioframe(no-location-assign-relative-destination)')
 })
 
-test('compatibility plugin retains deprecated React API and render-return checks', () => {
+test('local navigation rule covers global objects, computed properties, prefixes, and reassigned destinations', () => {
   const result = lint(`
+    export function navigate(id: string) {
+      location.assign('/other')
+      window.location.href = '#section'
+      globalThis.location.assign('../other')
+      self.location['assign']('?page=2')
+      document['location']['href'] = 'other'
+      window['location']['assign'](\`/users/\${id}\`)
+      const destination = '/other'
+      window.location.assign(destination)
+      const prefix = '/users/'
+      window.location.href = prefix + id
+      let target = 'https://example.test'
+      target = '/other'
+      location.assign(target)
+    }
+  `)
+  expect(result.status).not.toBe(0)
+  expect(result.rules).toEqual(Array(9).fill('audioframe(no-location-assign-relative-destination)'))
+})
+
+test('local navigation rule accepts external URLs, unknown destinations, location reads, and shadowed objects', () => {
+  const result = lint(
+    `
+      export function navigate(destination) {
+        window.location.assign('https://example.test')
+        window.location.assign('https' + '://example.test')
+        location.href = '//example.test'
+        globalThis.location.assign('mailto:hello@example.test')
+        self.location.href = 'custom:page'
+        const target = 'https://example.test'
+        window.location.assign(target)
+        window.location.assign(destination)
+        window.location.assign(\`\${destination}/other\`)
+        return new URL(window.location.href).href
+      }
+      export function shadowed(window, location, self, document, globalThis) {
+        window.location.assign('/other')
+        location.href = '/other'
+        self.location.assign('/other')
+        document.location.href = '/other'
+        globalThis.location.assign('/other')
+      }
+      export function cyclic() {
+        const first = second
+        const second = first
+        window.location.assign(first)
+      }
+    `,
+    { filename: 'example.js' }
+  )
+  expect(result.status).toBe(0)
+  expect(result.rules).toEqual([])
+})
+
+test('native React rules retain unsafe lifecycle and render-return checks in JavaScript', () => {
+  const result = lint(
+    `
     import React from 'react'
     export default class Example extends React.Component {
       componentWillMount() {}
       render() {}
     }
-  `)
+  `,
+    { filename: 'example.jsx' }
+  )
   expect(result.status).not.toBe(0)
-  expect(result.rules).toContain('react-compat(no-deprecated)')
-  expect(result.rules).toContain('react-compat(require-render-return)')
+  expect(result.rules).toContain('react(no-unsafe)')
+  expect(result.rules).toContain('react(require-render-return)')
 })
 
 test('automatic JSX imports and JSX-only variable usages do not produce unused warnings', () => {
@@ -146,7 +206,7 @@ test('type-aware profile detects unsafe values across assignments, calls, member
     expect(result.rules).toContain(`typescript(${rule})`)
 })
 
-test('type-aware profile retains compatibility rules and accepts handled promises', () => {
+test('type-aware profile retains the local navigation rule and accepts handled promises', () => {
   const result = lint(
     `
       declare function work(): Promise<void>
@@ -156,10 +216,10 @@ test('type-aware profile retains compatibility rules and accepts handled promise
     { typeAware: true }
   )
   expect(result.status).not.toBe(0)
-  expect(result.rules).toEqual(['next-compat(no-location-assign-relative-destination)'])
+  expect(result.rules).toEqual(['audioframe(no-location-assign-relative-destination)'])
 })
 
-test('type-aware profile retains deprecated React API and render-return checks', () => {
+test('type-aware profile retains native unsafe lifecycle and render-return checks', () => {
   const result = lint(
     `
       import React from 'react'
@@ -171,6 +231,19 @@ test('type-aware profile retains deprecated React API and render-return checks',
     { typeAware: true }
   )
   expect(result.status).not.toBe(0)
-  expect(result.rules).toContain('react-compat(no-deprecated)')
-  expect(result.rules).toContain('react-compat(require-render-return)')
+  expect(result.rules).toContain('react(no-unsafe)')
+  expect(result.rules).toContain('react(require-render-return)')
+})
+
+test('type-aware profile rejects deprecated APIs', () => {
+  const result = lint(
+    `
+      /** @deprecated Use modernApi instead. */
+      declare function legacyApi(): void
+      export function example() { legacyApi() }
+    `,
+    { typeAware: true }
+  )
+  expect(result.status).not.toBe(0)
+  expect(result.rules).toEqual(['typescript(no-deprecated)'])
 })

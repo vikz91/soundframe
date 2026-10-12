@@ -11,16 +11,16 @@ const preferencesSchema = z
     fullCover: z
       .strictObject({
         accent: z.enum(['teal', 'aqua', 'mint', 'blue', 'violet']),
-        sensitivity: z.number().finite().min(0).max(100),
+        sensitivity: z.number().min(0).max(100),
         typography: z.enum(['sans', 'heading', 'mono']),
         visualization: z.enum(['bars', 'none']),
         pattern: z.enum(['thin', 'bold', 'segmented']),
         colour: z.enum(['ivory', 'accent']),
-        height: z.number().finite().min(5).max(30),
-        fade: z.number().finite().min(0).max(100),
+        height: z.number().min(5).max(30),
+        fade: z.number().min(0).max(100),
         framing: z.enum(['fit', 'fill']),
-        positionX: z.number().finite().min(0).max(100),
-        positionY: z.number().finite().min(0).max(100),
+        positionX: z.number().min(0).max(100),
+        positionY: z.number().min(0).max(100),
         // Accept and discard the retired toggle from earlier presets.
         showDetails: z.boolean().optional()
       })
@@ -29,7 +29,7 @@ const preferencesSchema = z
     mode: z.enum(['cover', 'spectrum', 'lighting']),
     accent: z.enum(['teal', 'aqua', 'mint', 'blue', 'violet']),
     background: z.enum(['midnight', 'glow', 'slate']),
-    sensitivity: z.number().finite().min(0).max(100),
+    sensitivity: z.number().min(0).max(100),
     typography: z.enum(['sans', 'heading', 'mono']),
     details: z.strictObject({
       title: z.string().max(200),
