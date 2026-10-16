@@ -1,13 +1,17 @@
 import { loadImage, readFile } from './browser-files'
+import { MemoryBudgetError, retainMemory, withMemoryReservation, type MemoryEstimate } from './memory-budget'
+import { AUDIO_VALIDATION_SAMPLE_RATE, MAX_AUDIO_MINUTES, MAX_AUDIO_SECONDS } from './media-limits'
+
+export { MAX_AUDIO_SECONDS } from './media-limits'
 
 // Conservative allocation bounds; these are provisional until physical device testing.
-export const MAX_AUDIO_BYTES = 64 * 1024 * 1024
-export const MAX_ARTWORK_BYTES = 12 * 1024 * 1024
+export const MAX_AUDIO_BYTES = 128 * 1024 * 1024
+export const MAX_ARTWORK_BYTES = 24 * 1024 * 1024
 export const MAX_ARTWORK_PIXELS = 16_000_000
 export const MAX_ARTWORK_SIDE = 8192
-export const MAX_AUDIO_SECONDS = 420
 export type LocalAudio = { name: string; url: string; size: number; duration: number }
 export type LocalArtwork = { image: HTMLImageElement; name: string; width: number; height: number }
+const mediaMemory = new WeakMap<object, () => void>()
 
 function text(bytes: Uint8Array, offset: number, length: number) {
   return String.fromCharCode(...bytes.subarray(offset, offset + length))
@@ -131,7 +135,7 @@ function mp4AudioDuration(bytes: Uint8Array): number | undefined {
 export function validateAudioDuration(duration: number) {
   if (!Number.isFinite(duration) || duration <= 0)
     throw new Error('This file has no playable audio. Choose another file.')
-  if (duration > MAX_AUDIO_SECONDS) throw new Error('Choose a track that is 7 minutes or shorter.')
+  if (duration > MAX_AUDIO_SECONDS) throw new Error(`Choose a track that is ${MAX_AUDIO_MINUTES} minutes or shorter.`)
   return duration
 }
 
@@ -173,14 +177,28 @@ function readAudioMetadata(url: string, signal: AbortSignal) {
   })
 }
 
-async function decodeAudio(bytes: ArrayBuffer, signal: AbortSignal) {
+async function decodeAudio(
+  bytes: ArrayBuffer,
+  signal: AbortSignal,
+  expectedDuration: number,
+  checkMemory: (estimate: MemoryEstimate) => void
+) {
   signal.throwIfAborted()
   if (typeof AudioContext === 'undefined')
     throw new Error('This browser cannot decode audio. Try a current desktop browser.')
-  const context = new AudioContext()
+  let context: AudioContext
+  try {
+    context = new AudioContext({ sampleRate: AUDIO_VALIDATION_SAMPLE_RATE })
+  } catch (error) {
+    if (!(error instanceof DOMException) || error.name !== 'NotSupportedError') throw error
+    context = new AudioContext()
+  }
   let abort: () => void = () => {}
   let timeout: ReturnType<typeof setTimeout> | undefined
   try {
+    // Stereo is a preflight estimate; the decoded channel count is checked again below.
+    const pcmEstimate = expectedDuration * (context.sampleRate || 48000) * 2 * 4
+    checkMemory({ buffers: bytes.byteLength * 3 + pcmEstimate * 2, heap: bytes.byteLength })
     // decodeAudioData extracts only audio from an MP4; video frames are never decoded.
     const cancelled = new Promise<never>((_, reject) => {
       abort = () => reject(new DOMException('Audio decoding cancelled.', 'AbortError'))
@@ -191,11 +209,13 @@ async function decodeAudio(bytes: ArrayBuffer, signal: AbortSignal) {
     signal.throwIfAborted()
     if (!audio.numberOfChannels || !audio.length)
       throw new Error('This file has no playable audio. Choose another file.')
+    checkMemory({ buffers: bytes.byteLength * 3 + audio.length * audio.numberOfChannels * 4 * 2 })
     return validateAudioDuration(audio.duration)
   } catch (error) {
+    if (error instanceof MemoryBudgetError) throw error
     if (signal.aborted || error instanceof Error) {
       if (signal.aborted) signal.throwIfAborted()
-      if (error instanceof Error && /7 minutes|timed out|no playable/.test(error.message)) throw error
+      if (error instanceof Error && /minutes or shorter|timed out|no playable/.test(error.message)) throw error
     }
     throw new Error('Your browser cannot decode this audio. Try an MP3 or WAV file.')
   } finally {
@@ -209,32 +229,40 @@ export async function readAudioFile(file: File, signal: AbortSignal): Promise<Lo
   signal.throwIfAborted()
   if (!/\.(mp3|wav|m4a|mp4)$/i.test(file.name)) throw new Error('Choose an MP3, WAV, M4A, or MP4 audio file.')
   if (!file.size) throw new Error('This file is empty. Choose another audio file.')
-  if (file.size > MAX_AUDIO_BYTES) throw new Error('Choose an audio file smaller than 64 MB for browser processing.')
-  const bytes = await readFile(file, 'arrayBuffer', signal)
-  signal.throwIfAborted()
-  const mimeType = validateAudioContent(new Uint8Array(bytes), file.name.split('.').at(-1)!.toLowerCase())
-  if (mimeType === 'audio/mp4') {
-    const duration = mp4AudioDuration(new Uint8Array(bytes))
-    // mdhd measures encoded samples and can include AAC priming/trailing padding.
-    // Keep this an allocation guard with bounded headroom; decoded audio remains strictly <=420s.
-    if (duration !== undefined && duration > MAX_AUDIO_SECONDS + 1)
-      throw new Error('Choose a track that is 7 minutes or shorter.')
-  }
-  const url = URL.createObjectURL(new Blob([bytes], { type: mimeType }))
-  try {
-    // MP4 container duration may include longer video. Validate only its decoded audio below.
-    // For standalone MP3/WAV, reject unreasonable duration before allocating decoded PCM.
-    if (mimeType !== 'audio/mp4') await readAudioMetadata(url, signal)
-    const duration = await decodeAudio(bytes, signal)
+  if (file.size > MAX_AUDIO_BYTES) throw new Error('Choose an audio file up to 128 MiB for browser processing.')
+  return withMemoryReservation({ buffers: file.size * 3, heap: file.size }, async (checkMemory) => {
+    const bytes = await readFile(file, 'arrayBuffer', signal)
     signal.throwIfAborted()
-    return { name: file.name, url, size: file.size, duration }
-  } catch (error) {
-    URL.revokeObjectURL(url)
-    throw error
-  }
+    const mimeType = validateAudioContent(new Uint8Array(bytes), file.name.split('.').at(-1)!.toLowerCase())
+    let expectedDuration = MAX_AUDIO_SECONDS
+    if (mimeType === 'audio/mp4') {
+      const duration = mp4AudioDuration(new Uint8Array(bytes))
+      // mdhd measures encoded samples and can include AAC priming/trailing padding.
+      // Keep bounded padding headroom here; the decoded audio duration limit stays strict.
+      if (duration !== undefined && duration > MAX_AUDIO_SECONDS + 1)
+        throw new Error(`Choose a track that is ${MAX_AUDIO_MINUTES} minutes or shorter.`)
+      if (duration !== undefined) expectedDuration = Math.min(duration, MAX_AUDIO_SECONDS)
+    }
+    const url = URL.createObjectURL(new Blob([bytes], { type: mimeType }))
+    try {
+      // MP4 container duration may include longer video. Validate only its decoded audio below.
+      // For standalone MP3/WAV, reject unreasonable duration before allocating decoded PCM.
+      if (mimeType !== 'audio/mp4') expectedDuration = await readAudioMetadata(url, signal)
+      const duration = await decodeAudio(bytes, signal, expectedDuration, checkMemory)
+      signal.throwIfAborted()
+      const track = { name: file.name, url, size: file.size, duration }
+      mediaMemory.set(track, retainMemory(file.size))
+      return track
+    } catch (error) {
+      URL.revokeObjectURL(url)
+      throw error
+    }
+  })
 }
 
 export function releaseAudioFile(track: LocalAudio) {
+  mediaMemory.get(track)?.()
+  mediaMemory.delete(track)
   URL.revokeObjectURL(track.url)
 }
 
@@ -277,33 +305,40 @@ export async function readArtworkFile(file: File, signal: AbortSignal): Promise<
   signal.throwIfAborted()
   if (!/\.(jpe?g|png)$/i.test(file.name)) throw new Error('Choose a JPG or PNG image.')
   if (!file.size) throw new Error('This image is empty. Choose another file.')
-  if (file.size > MAX_ARTWORK_BYTES) throw new Error('Choose a JPG or PNG smaller than 12 MB.')
-  const bytes = await readFile(file, 'arrayBuffer', signal)
-  signal.throwIfAborted()
-  const dimensions = artworkDimensions(new Uint8Array(bytes), file.name.split('.').at(-1)!.toLowerCase())
-  validateArtworkDimensions(dimensions.width, dimensions.height)
-  const url = URL.createObjectURL(new Blob([bytes], { type: dimensions.mime }))
-  let image: HTMLImageElement | undefined
-  try {
-    image = await loadImage(url, signal)
+  if (file.size > MAX_ARTWORK_BYTES) throw new Error('Choose a JPG or PNG up to 24 MiB.')
+  return withMemoryReservation({ buffers: file.size * 3, heap: file.size }, async (checkMemory) => {
+    const bytes = await readFile(file, 'arrayBuffer', signal)
     signal.throwIfAborted()
-    validateArtworkDimensions(image.naturalWidth, image.naturalHeight)
-    const matches = image.naturalWidth === dimensions.width && image.naturalHeight === dimensions.height
-    // Browsers apply JPEG EXIF orientation; quarter-turn images swap the encoded frame dimensions.
-    const rotatedJPEG =
-      dimensions.mime === 'image/jpeg' &&
-      image.naturalWidth === dimensions.height &&
-      image.naturalHeight === dimensions.width
-    if (!matches && !rotatedJPEG) throw new Error('This image has inconsistent dimensions. Choose another file.')
-    return { image, name: file.name, width: image.naturalWidth, height: image.naturalHeight }
-  } catch (error) {
-    if (image) image.src = ''
-    throw error
-  } finally {
-    URL.revokeObjectURL(url)
-  }
+    const dimensions = artworkDimensions(new Uint8Array(bytes), file.name.split('.').at(-1)!.toLowerCase())
+    validateArtworkDimensions(dimensions.width, dimensions.height)
+    checkMemory({ buffers: file.size * 3 + dimensions.width * dimensions.height * 8, heap: file.size })
+    const url = URL.createObjectURL(new Blob([bytes], { type: dimensions.mime }))
+    let image: HTMLImageElement | undefined
+    try {
+      image = await loadImage(url, signal)
+      signal.throwIfAborted()
+      validateArtworkDimensions(image.naturalWidth, image.naturalHeight)
+      const matches = image.naturalWidth === dimensions.width && image.naturalHeight === dimensions.height
+      // Browsers apply JPEG EXIF orientation; quarter-turn images swap the encoded frame dimensions.
+      const rotatedJPEG =
+        dimensions.mime === 'image/jpeg' &&
+        image.naturalWidth === dimensions.height &&
+        image.naturalHeight === dimensions.width
+      if (!matches && !rotatedJPEG) throw new Error('This image has inconsistent dimensions. Choose another file.')
+      const artwork = { image, name: file.name, width: image.naturalWidth, height: image.naturalHeight }
+      mediaMemory.set(artwork, retainMemory(artwork.width * artwork.height * 4))
+      return artwork
+    } catch (error) {
+      if (image) image.src = ''
+      throw error
+    } finally {
+      URL.revokeObjectURL(url)
+    }
+  })
 }
 
 export function releaseArtworkFile(artwork: LocalArtwork) {
+  mediaMemory.get(artwork)?.()
+  mediaMemory.delete(artwork)
   artwork.image.src = ''
 }

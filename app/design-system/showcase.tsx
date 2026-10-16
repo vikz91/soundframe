@@ -28,6 +28,7 @@ import {
   type ExportStage
 } from '@/components/audioframe/export-controls'
 import { ConfirmDialog } from '@/components/audioframe/confirm-dialog'
+import { MAX_AUDIO_MINUTES } from '@/lib/media-limits'
 import { PresetActions } from '@/components/audioframe/preset-actions'
 import { ToastExamples } from '@/components/audioframe/toast-examples'
 import {
@@ -383,7 +384,7 @@ export function DesignSystemShowcase() {
               Export runs while this page stays in the foreground.
             </Notice>
             <Notice tone="danger" title="Track is too long">
-              Choose a track that is 7 minutes or shorter.
+              Choose a track that is {MAX_AUDIO_MINUTES} minutes or shorter.
             </Notice>
           </div>
           {message ? <Notice title="Playground action">{message}</Notice> : null}

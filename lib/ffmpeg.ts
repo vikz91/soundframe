@@ -1,4 +1,5 @@
 import type { FFmpeg } from '@ffmpeg/ffmpeg'
+import { memoryPolicy, retainMemory } from './memory-budget'
 
 export type FFmpegState = {
   status: 'idle' | 'loading' | 'ready' | 'running' | 'error'
@@ -26,6 +27,8 @@ export type FFmpegSession = {
 export type FFmpegPipeline = Omit<FFmpegJob, 'args'> & {
   process: (session: FFmpegSession, paths: { inputs: string[]; output: string }) => Promise<void>
   maxOutputBytes: number
+  /** Recheck caller-owned buffer estimates and optional heap headroom at allocation boundaries. */
+  checkMemory?: (additionalHeapBytes: number) => void
 }
 
 type Engine = Pick<
@@ -61,6 +64,7 @@ async function createEngine(): Promise<Engine> {
 export function createFFmpegClient(factory: () => Promise<Engine> = createEngine) {
   let state = initialState
   let engine: Engine | undefined
+  let releaseEngineMemory: (() => void) | undefined
   let loading: Promise<Engine> | undefined
   let generation = 0
   let active: symbol | undefined
@@ -76,6 +80,8 @@ export function createFFmpegClient(factory: () => Promise<Engine> = createEngine
   const dispose = () => {
     generation++
     engine?.terminate()
+    releaseEngineMemory?.()
+    releaseEngineMemory = undefined
     engine = undefined
     loading = undefined
     active = undefined
@@ -88,6 +94,7 @@ export function createFFmpegClient(factory: () => Promise<Engine> = createEngine
     publish({ status: 'loading', progress: 0, error: null })
     loading = (async () => {
       try {
+        releaseEngineMemory = retainMemory(memoryPolicy.ffmpegEngineBytes)
         const instance = await factory()
         if (epoch !== generation) {
           instance.terminate()
@@ -105,6 +112,8 @@ export function createFFmpegClient(factory: () => Promise<Engine> = createEngine
       } catch (error) {
         if (epoch !== generation) throw aborted()
         engine?.terminate()
+        releaseEngineMemory?.()
+        releaseEngineMemory = undefined
         engine = undefined
         publish({ status: 'error', progress: 0, error: String(error) })
         throw error
@@ -139,7 +148,11 @@ export function createFFmpegClient(factory: () => Promise<Engine> = createEngine
       const percent = Math.max(state.progress, Math.min(0.99, Math.floor(value * 100) / 100))
       if (percent !== state.progress) publish({ ...state, progress: percent })
     }
+    const checkMemory = (bytes = 0) => {
+      if ('process' in job) job.checkMemory?.(bytes)
+    }
     try {
+      checkMemory()
       instance = await load()
       assertCurrent(epoch)
       publish({ status: 'running', progress: 0, error: null })
@@ -148,6 +161,7 @@ export function createFFmpegClient(factory: () => Promise<Engine> = createEngine
       await instance.createDir(directory)
       const inputs: string[] = []
       for (const input of job.inputs) {
+        checkMemory(input.data instanceof Uint8Array ? input.data.byteLength : input.data.size)
         // Copy caller-owned bytes: writeFile transfers its buffer to the worker.
         const bytes =
           input.data instanceof Uint8Array ? new Uint8Array(input.data) : new Uint8Array(await input.data.arrayBuffer())
@@ -169,10 +183,12 @@ export function createFFmpegClient(factory: () => Promise<Engine> = createEngine
           {
             path,
             write: async (name, data) => {
+              checkMemory(data.byteLength)
               await current.writeFile(path(name), new Uint8Array(data))
               assertCurrent(epoch)
             },
             read: async (name) => {
+              checkMemory()
               const data = await current.readFile(path(name))
               assertCurrent(epoch)
               if (!(data instanceof Uint8Array)) throw new Error('Expected binary FFmpeg output')
@@ -184,6 +200,7 @@ export function createFFmpegClient(factory: () => Promise<Engine> = createEngine
             },
             exec: async (args, onProgress) => {
               assertCurrent(epoch)
+              checkMemory()
               const update = ({ progress: value }: { progress: number }) => {
                 if (epoch === generation && Number.isFinite(value)) onProgress?.(Math.max(0, Math.min(1, value)))
               }
@@ -205,11 +222,13 @@ export function createFFmpegClient(factory: () => Promise<Engine> = createEngine
         if (code !== 0) throw new Error(`FFmpeg exited with code ${code}`)
       }
       assertCurrent(epoch)
+      checkMemory('process' in job ? job.maxOutputBytes : 0)
       const bytes = await instance.readFile(output)
       if (!(bytes instanceof Uint8Array)) throw new Error('Expected binary FFmpeg output')
       if (!bytes.length) throw new Error('FFmpeg produced an empty output')
       if ('maxOutputBytes' in job && bytes.length > job.maxOutputBytes)
         throw new Error('Video exceeded the output memory limit')
+      checkMemory(bytes.byteLength * 2)
       const result = new Blob([new Uint8Array(bytes).buffer], { type: job.output.type })
       await removeDirectory(instance, directory)
       assertCurrent(epoch)

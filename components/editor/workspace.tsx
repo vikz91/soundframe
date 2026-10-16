@@ -30,6 +30,7 @@ import { Notice, StatusBadge } from '@/components/audioframe/status'
 import { ThemeToggle } from '@/components/audioframe/theme-toggle'
 import { accentColours, backgroundColours } from '@/lib/audioframe-design'
 import { readArtworkFile, releaseArtworkFile } from '@/lib/local-media'
+import { MAX_AUDIO_MINUTES } from '@/lib/media-limits'
 import { checkMediaCapabilities } from '@/lib/media-capabilities'
 import { useAudioPlayback } from '@/hooks/use-audio-playback'
 import { useLocalFile } from '@/hooks/use-local-file'
@@ -140,6 +141,7 @@ export function MediaWorkspace() {
       preferences: effectivePreferences,
       artwork: artwork.value.image,
       audioURL: audio.track.url,
+      audioBytes: audio.track.size,
       duration: audio.track.duration
     })
   }
@@ -450,8 +452,9 @@ export function MediaWorkspace() {
             </MediaFileCard>
           </div>
           <p className="text-xs leading-5 text-muted-foreground">
-            Current safeguards: audio up to 64 MiB and 7 minutes; artwork up to 12 MiB, 16 million pixels, and 8192
-            pixels per side. These limits are provisional; mobile device testing is pending.
+            Current safeguards: audio up to 128 MiB and {MAX_AUDIO_MINUTES} minutes; artwork up to 24 MiB, 16 million
+            pixels, and 8192 pixels per side. Available memory headroom may require smaller files. Mobile device testing
+            is pending.
           </p>
           <Button disabled={!available} onClick={() => navigate('create')}>
             Create your frame

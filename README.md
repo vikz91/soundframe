@@ -24,7 +24,7 @@ The v0 goal is a free tool for desktop and capable mobile browsers, hosted on Ve
 
 ## Project status
 
-**Local media preview, video encoding, and output downloads are implemented.** `/` is the homepage, with **Create a video** opening `/create` and a separate link to the sample prototype. `/create` accepts real audio and artwork, offers Classic (Cover/Spectrum/Lighting) and Full cover (Bars/None) layouts with song details and plain or timed LRC lyrics, imports/exports JSON settings, and generates MP4 or WebM videos locally. `/prototype` remains a separate sample-only simulation.
+**Local media preview, video encoding, and output downloads are implemented.** Both `/` and `/create` open the real editor, which accepts real audio and artwork, offers Classic (Cover/Spectrum/Lighting) and Full cover (Bars/None) layouts with song details and plain or timed LRC lyrics, imports/exports JSON settings, and generates MP4 or WebM videos locally.
 
 Encoding uses one lazy FFmpeg.wasm worker with bounded Canvas batches. The editor reports progress and approximate ETA, supports cancellation/retry, and retains the previous successful video until replacement or expiry. See the [TODO tracker](TODO.md), [product decisions](docs/V0_DECISIONS.md), and [media architecture](docs/MEDIA_PIPELINE_ARCHITECTURE.md) for implementation and remaining release gates.
 
@@ -32,9 +32,9 @@ Initial encoding verification on 12 October 2026 recorded `bun run check` passin
 
 The later resolution update adds default 320p and optional 720p for both formats. Short 720p Spectrum exports passed codec/audio/full-decode checks, and a four-minute 720p Spectrum MP4 passed exact frame-count, 30 fps, matching audio/video duration, and complete decoding checks. Settings compatibility and a 390 px layout were verified; checks passed with 119 tests and the production build passed. See the [resolution verification and remaining release gates](TODO.md#release-gates).
 
-Latest release validation on 12 October 2026 completed all twelve seven-minute **Classic** exports across 320p/720p, Cover/Spectrum/Lighting, and MP4/WebM, each with 12,600 frames, correct stereo codecs, full decoding, timeline timestamp checks, and audio markers every 30 seconds. All-mode short 720p exports, local production UI checks, and real exports on the supplied Vercel URL also passed. The 320 px navigation overflow was fixed locally. [Release validation](docs/RELEASE_VALIDATION.md) records evidence, repeatable tools, memory observations and blocked physical-device/account-quota gates.
+Recorded release validation on 12 October 2026 completed all twelve seven-minute **Classic** exports across 320p/720p, Cover/Spectrum/Lighting, and MP4/WebM, each with 12,600 frames, correct stereo codecs, full decoding, timeline timestamp checks, and audio markers every 30 seconds. All-mode short 720p exports, local production UI checks, and real exports on the supplied Vercel URL also passed. The 320 px navigation overflow was fixed locally. [Release validation](docs/RELEASE_VALIDATION.md) records evidence, repeatable tools, memory observations and blocked physical-device/account-quota gates.
 
-Full cover has short MP4/WebM export evidence at both resolutions. After removing the details visibility toggle and improving preview density and metadata typography, the 320p Full cover suite and a Classic Cover MP4 regression passed again; `bun run check` and `bun run build` also passed. Full cover seven-minute exports, complete pattern/lyric export coverage, and physical-device validation remain open. See the [Full cover tracker](TODO.md#completed-full-cover-layout-and-sharper-preview).
+Full cover has short MP4/WebM export evidence at both resolutions. After removing the details visibility toggle and improving preview density and metadata typography, the 320p Full cover suite and a Classic Cover MP4 regression passed again; `bun run check` and `bun run build` also passed. The current duration limit is fifteen minutes; the full-length all-layout/mode/format matrix and physical-device validation remain open. See the [Full cover tracker](TODO.md#completed-full-cover-layout-and-sharper-preview).
 
 ## The workflow
 
@@ -42,7 +42,7 @@ Full cover has short MP4/WebM export evidence at both resolutions. After removin
 
 Available now at `/create`:
 
-1. Select or drop an audio file up to **seven minutes** long and a JPG or PNG cover image.
+1. Select or drop an audio file up to **fifteen minutes** long and a JPG or PNG cover image.
 2. Choose **Classic** (Cover, Spectrum, or Lighting) or **Full cover** (Bars or None). Switching layouts restores each layout's appearance choices.
 3. Add optional song details, plain lyrics, or timed LRC lyrics; adjust colours and typography. Full cover retains song details and lyrics; leave individual detail fields empty to omit them.
 4. Play, pause, seek, and adjust volume while previewing the composition.
@@ -60,7 +60,7 @@ Available now at `/create`:
 | Presets          | Strict version-1 JSON settings; media files are selected separately                     |
 | MP4 output       | H.264 video with AAC stereo audio                                                       |
 | WebM output      | VP8 video with Opus stereo audio                                                        |
-| Export lifecycle | Up to seven minutes, one export at a time, progress, ETA, and cancellation              |
+| Export lifecycle | Up to fifteen minutes, one export at a time, progress, ETA, and cancellation            |
 
 ### Layouts and song details
 
@@ -68,23 +68,27 @@ Full cover offers **Thin**, **Bold**, or **Segmented** bottom bars, **Ivory** or
 
 ### Input limits and lyrics
 
-Audio must be non-empty, at most **64 MiB**, browser-decodable, and have a finite positive duration of at most **420 seconds**. MP4 video is ignored; validation and preview use the audio duration even when the video is longer.
+The duration cap is **15 minutes**. Production-browser verification passed a full-length Spectrum MP4 and Cover WebM at 320p, each with 27,000 frames. See [fifteen-minute verification](docs/RELEASE_VALIDATION.md#fifteen-minute-duration-verification-16-october-2026) for exact scope and remaining device/matrix gates.
 
-Artwork must be non-empty and at most **12 MiB**, **16 million pixels**, and **8192 pixels per side**. JPEG orientation can swap decoded dimensions. These conservative bounds have desktop boundary coverage; they are not a verified mobile memory budget.
+Files below the size limits can still be rejected when estimated buffers or available JavaScript heap lack headroom. The provisional buffer budget is 25% of reported device RAM, capped at 1 GiB, or 768 MiB when unavailable. Accounting includes 128 MiB runtime headroom and a 256 MiB allowance for the loaded FFmpeg engine. When heap readings are available, current heap plus the next estimated allocation must stay within 80% of the reported limit. These estimates are admission checks, not a hard cap on browser memory. Encoded video parts are capped at **128 MiB** and the final video at **160 MiB**. See [memory admission checks](docs/MEDIA_PIPELINE_ARCHITECTURE.md#memory-admission-checks) for the provisional policy and browser limitations.
 
-Plain and timed lyrics are limited to **20,000 characters**. LRC accepts timestamps such as `[00:03]` or `[00:03.125]`, repeated timestamps on a line, metadata tags, and one signed millisecond offset between -420000 and 420000. Positive offset advances cues; equal timestamps use the last source occurrence. Empty timed cues clear the text. Enhanced word timing is unsupported. Imported `.lrc` files must be non-empty and at most **256 KiB**.
+Audio must be non-empty, at most **128 MiB**, browser-decodable, and have a finite positive duration of at most **900 seconds**. MP4 video is ignored; validation and preview use the audio duration even when the video is longer.
 
-JSON settings must be non-empty and at most **128 KiB**, with the shape `{ "version": 1, "preferences": { ... } }`. Preferences include layout, independent Classic/Full cover appearance choices, output format, and resolution. Older version-1 presets without layout import as **Classic**, and those without resolution import as **320p**; unsupported values are rejected. The retired `fullCover.showDetails` boolean is accepted and discarded, so it cannot hide populated fields and is omitted from new presets. The strict schema rejects unsupported versions, other unknown keys, media references, and credentials. Song-detail fields are limited to **200 characters** each. See the [settings schema](lib/editor/settings.ts) for supported values.
+Artwork must be non-empty and at most **24 MiB**, **16 million pixels**, and **8192 pixels per side**. JPEG orientation can swap decoded dimensions. The byte limits were doubled on 16 October 2026; the 12 October desktop release evidence predates that change. Later boundary and fifteen-minute checks are recorded in [release validation](docs/RELEASE_VALIDATION.md). Physical-device calibration remains pending.
+
+Plain and timed lyrics are limited to **20,000 characters**. LRC accepts timestamps such as `[00:03]` or `[00:03.125]`, repeated timestamps on a line, metadata tags, and one signed millisecond offset between -900000 and 900000. Positive offset advances cues; equal timestamps use the last source occurrence. Empty timed cues clear the text. Enhanced word timing is unsupported. Imported `.lrc` files must be non-empty and at most **512 KiB**.
+
+JSON settings must be non-empty and at most **256 KiB**, with the shape `{ "version": 1, "preferences": { ... } }`. Preferences include layout, independent Classic/Full cover appearance choices, output format, and resolution. Older version-1 presets without layout import as **Classic**, and those without resolution import as **320p**; unsupported values are rejected. The retired `fullCover.showDetails` boolean is accepted and discarded, so it cannot hide populated fields and is omitted from new presets. The strict schema rejects unsupported versions, other unknown keys, media references, and credentials. Song-detail fields are limited to **200 characters** each. See the [settings schema](lib/editor/settings.ts) for supported values.
 
 ### Privacy and device support
 
 The current editor reads and decodes selected media locally using browser APIs. Web Audio drives the visual effects, Canvas paints the preview, and JSON settings download locally. The encoder uses FFmpeg.wasm and its built-in worker, loaded only when export starts; preview does not load the engine. Server media uploads and hosted video links remain outside v0.
 
-Generated video Blobs and URLs remain available for repeat downloads until **Clear project**, page closure, or one hour after successful generation. Downloads do not extend retention; successful replacement releases the old output, while editing, cancellation, and failure preserve it. The timer is best effort while the page runs; it cannot delete files already downloaded to your device. The sample prototype simulates this lifecycle.
+Generated video Blobs and URLs remain available for repeat downloads until **Clear project**, page closure, or one hour after successful generation. Downloads do not extend retention; successful replacement releases the old output, while editing, cancellation, and failure preserve it. The timer is best effort while the page runs; it cannot delete files already downloaded to your device.
 
 Download names use the song title and optional artist, for example `Morning Light - River - audioframe.mp4`. An empty title becomes `Untitled track`. Unsafe filename characters are removed or replaced, and names are limited to 255 UTF-8 bytes. The result keeps the filename, format, and resolution captured at export start; later preference edits do not relabel an existing video.
 
-Modern desktop and capable mobile browsers are the target. Keep the app open and in the foreground during export. Seven-minute Classic exports have desktop evidence in every mode and both formats at 320p and 720p. Older or low-spec phones may be unsupported; physical mobile performance, practical device limits and Full cover full-length validation still require testing.
+Modern desktop and capable mobile browsers are the target. Keep the app open and in the foreground during export. Historical seven-minute Classic exports have desktop evidence in every mode and both formats at 320p and 720p. Current fifteen-minute production checks cover Spectrum MP4 and Cover WebM at 320p. Older or low-spec phones may be unsupported; physical mobile performance, practical device limits and Full cover full-length validation still require testing.
 
 ## Get started
 
@@ -97,7 +101,7 @@ bun install
 bun run dev
 ```
 
-Open [localhost:3000](http://localhost:3000), then use [the real editor](http://localhost:3000/create) or [the sample prototype](http://localhost:3000/prototype). The development server reloads when you edit the application.
+Open [localhost:3000](http://localhost:3000) or [the editor at /create](http://localhost:3000/create). The development server reloads when you edit the application.
 
 To check the production build locally:
 
@@ -116,22 +120,21 @@ The stack is **Next.js App Router**, **React 19**, **strict TypeScript 7.0.2**, 
 
 The TypeScript upgrade required no application-code or strict compiler-option changes. Tooling compatibility changes include the legacy compiler API and editor language-service plugins; Next.js uses the supported compiler CLI. See [TypeScript 7 upgrade notes](docs/AGENT_GUIDE.md#typescript-7-version-and-upgrade-notes) for versions, breaking changes, and editor setup.
 
-| Command                  | Purpose                                                                            |
-| ------------------------ | ---------------------------------------------------------------------------------- |
-| `bun run dev`            | Start the development server                                                       |
-| `bun run check`          | Run lint, formatting, TypeScript, hook, media, tooling, and prototype tests        |
-| `bun run lint`           | Check Oxlint rules; warnings fail                                                  |
-| `bun run lint:types`     | Generate route types, then run type-aware lint with tsgolint                       |
-| `bun run typecheck`      | Generate route types, then check TypeScript without emitting JavaScript            |
-| `bun run format:check`   | Check Oxfmt formatting                                                             |
-| `bun run test:hooks`     | Test commit tooling in temporary repositories                                      |
-| `bun run test:media`     | Test media validation, lifecycles, capabilities, composition, lyrics, and settings |
-| `bun run test:prototype` | Test sample-only session, export/expiry lifecycle, and picker overrides            |
-| `bun run test:tooling`   | Verify native, compatibility, and semantic lint rules                              |
-| `bun run ffmpeg:assets`  | Refresh locally served FFmpeg runtime assets                                       |
-| `bun run lint:fix`       | Apply supported Oxlint fixes                                                       |
-| `bun run format`         | Format the repository with Oxfmt                                                   |
-| `bun run build`          | Create a production build                                                          |
+| Command                 | Purpose                                                                            |
+| ----------------------- | ---------------------------------------------------------------------------------- |
+| `bun run dev`           | Start the development server                                                       |
+| `bun run check`         | Run lint, formatting, TypeScript, hook, media, and tooling tests                   |
+| `bun run lint`          | Check Oxlint rules; warnings fail                                                  |
+| `bun run lint:types`    | Generate route types, then run type-aware lint with tsgolint                       |
+| `bun run typecheck`     | Generate route types, then check TypeScript without emitting JavaScript            |
+| `bun run format:check`  | Check Oxfmt formatting                                                             |
+| `bun run test:hooks`    | Test commit tooling in temporary repositories                                      |
+| `bun run test:media`    | Test media validation, lifecycles, capabilities, composition, lyrics, and settings |
+| `bun run test:tooling`  | Verify native, compatibility, and semantic lint rules                              |
+| `bun run ffmpeg:assets` | Refresh locally served FFmpeg runtime assets                                       |
+| `bun run lint:fix`      | Apply supported Oxlint fixes                                                       |
+| `bun run format`        | Format the repository with Oxfmt                                                   |
+| `bun run build`         | Create a production build                                                          |
 
 ### Git hooks and versioning
 

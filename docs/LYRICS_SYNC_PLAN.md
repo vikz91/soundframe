@@ -63,7 +63,7 @@ Example: the imported line begins at `02:10`, but vocals resume at `02:28`. Sele
 
 Capture the selected cue IDs and their initial times when a slider gesture starts. Treat the gesture as one undo operation, calculating each preview from that captured state rather than repeatedly accumulating the shift. Reject edits that create negative/out-of-range times or newly reorder/collapse lyric occurrences; explain the boundary and leave the last valid state intact. Preserve imported equal-time ordering and last-occurrence lookup behavior. Do not silently clamp or reorder a user's correction.
 
-With audio loaded, edited starts must be within its validated duration. Without audio, enforce the existing seven-minute limit and revalidate against the actual track when selected. Audio replacement retains corrections but revalidates them; show out-of-range issues and block export until resolved. A failed replacement preserves the existing accepted track.
+With audio loaded, edited starts must be within its validated duration. Without audio, enforce the existing fifteen-minute limit and revalidate against the actual track when selected. Audio replacement retains corrections but revalidates them; show out-of-range issues and block export until resolved. The current loader clears the prior track when replacement starts; an explicit keep-until-accepted replacement policy would require a separate implementation.
 
 ### Instrumental gaps
 

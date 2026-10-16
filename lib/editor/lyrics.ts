@@ -1,3 +1,5 @@
+import { MAX_AUDIO_SECONDS } from '@/lib/media-limits'
+
 export type LyricCue = Readonly<{ time: number; text: string; line: number }>
 export type LyricIssue = { line: number; message: string }
 export type ParsedLrc = { cues: LyricCue[]; errors: LyricIssue[]; offset: number }
@@ -26,8 +28,9 @@ export function parseLrc(text: string): ParsedLrc {
       const offsetTag = /^\[offset:([+-]?\d+)\]$/i.exec(value)
       if (offsetTag) {
         const milliseconds = Number(offsetTag[1])
-        if (hasOffset || !Number.isSafeInteger(milliseconds) || Math.abs(milliseconds) > 420000) {
-          errors.push({ line, message: 'Use one offset tag with milliseconds between -420000 and 420000.' })
+        const maxOffset = MAX_AUDIO_SECONDS * 1000
+        if (hasOffset || !Number.isSafeInteger(milliseconds) || Math.abs(milliseconds) > maxOffset) {
+          errors.push({ line, message: `Use one offset tag with milliseconds between -${maxOffset} and ${maxOffset}.` })
         } else {
           offset = milliseconds
           hasOffset = true

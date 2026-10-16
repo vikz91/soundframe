@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { parseLrc } from './lyrics'
 import { defaultFullCoverPreferences, type EditorPreferences } from './types'
 
-export const settingsFileLimit = 128 * 1024
+export const settingsFileLimit = 256 * 1024
 
 const preferencesSchema = z
   .strictObject({
@@ -55,7 +55,7 @@ export const settingsSchema = z.strictObject({ version: z.literal(1), preference
 
 export function parseSettings(text: string): EditorPreferences {
   if (new TextEncoder().encode(text).byteLength > settingsFileLimit) {
-    throw new Error('Settings files must be 128 KB or smaller.')
+    throw new Error('Settings files must be 256 KiB or smaller.')
   }
   let value: unknown
   try {
