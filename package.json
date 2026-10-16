@@ -1,6 +1,6 @@
 {
   "name": "audioframe-web",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "private": true,
   "scripts": {
     "dev": "bun run ffmpeg:assets && bunx --bun next dev",
@@ -12,7 +12,7 @@
     "lint:staged": "lint-staged",
     "commit:check": "bun scripts/pre-commit.mjs",
     "test:hooks": "bun test scripts/pre-commit.test.mjs",
-    "test:media": "bun test scripts/ffmpeg-core.test.mjs lib/ffmpeg.test.mjs lib/browser-files.test.mjs lib/local-file.test.mjs lib/local-media.test.mjs lib/media-capabilities.test.mjs lib/editor/*.test.mjs",
+    "test:media": "bun test scripts/ffmpeg-core.test.mjs lib/ffmpeg.test.mjs lib/browser-files.test.mjs lib/local-file.test.mjs lib/local-media.test.mjs lib/media-capabilities.test.mjs lib/memory-budget.test.mjs lib/editor/*.test.mjs",
     "test:tooling": "bun test scripts/quality-tools.test.mjs scripts/vercel-ignore-build.test.mjs",
     "ffmpeg:assets": "bun scripts/sync-ffmpeg-assets.mjs",
     "format": "oxfmt --write .",

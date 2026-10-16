@@ -1,6 +1,6 @@
 # Release validation
 
-Validation date: 12 October 2026. The acceptance tools encode synthetic local files in the browser's actual single-thread FFmpeg.wasm engine. Native FFmpeg only generates fixtures and inspects downloaded files. Desktop evidence and viewport emulation do not establish physical Android/iPhone support.
+Validation dates: 12 and 16 October 2026. The acceptance tools encode synthetic local files in the browser's actual single-thread FFmpeg.wasm engine. Native FFmpeg only generates fixtures and inspects downloaded files. Desktop evidence and viewport emulation do not establish physical Android/iPhone support.
 
 ## Repeatable acceptance
 
@@ -19,10 +19,10 @@ ENCODING_BASE_URL=http://localhost:3010/create \
 ENCODING_EVIDENCE_DIR=output/release/short \
 node scripts/verify-encoding.mjs
 
-# Seven minutes: 12,600 frames, all three modes, both formats.
-ENCODING_DURATION=420 ENCODING_RESOLUTION=320p \
+# Fifteen minutes: 27,000 frames, all three modes, both formats.
+ENCODING_DURATION=900 ENCODING_RESOLUTION=320p \
 ENCODING_BASE_URL=http://localhost:3010/create \
-ENCODING_EVIDENCE_DIR=output/release/320p \
+ENCODING_EVIDENCE_DIR=output/release/15min-320p \
 node scripts/verify-encoding.mjs
 
 # Repeat with ENCODING_RESOLUTION=720p and a separate evidence directory.
@@ -33,9 +33,9 @@ HOSTING_BASE_URL=https://audioframe.abhishekdeb.com \
 node scripts/verify-hosting.mjs
 ```
 
-The encoder script defaults to 2.35 seconds, 320p, and a one-hour timeout per export; `ENCODING_TIMEOUT_MS` changes the timeout. Seven-minute stereo WAV fixtures use 32 kHz PCM to stay within the 64 MiB input guard. They alternate initial silence and tones every 30 seconds. Short fixtures still exercise partial final chunks. JSON reports, reference/decoded PNGs, and layout screenshots survive the run; synthetic inputs and downloaded videos are temporary. `exports.json` is an incremental checkpoint, so a later failure cannot erase already verified exports. Only a final `verification.json` establishes completion of the lifecycle checks.
+The encoder script defaults to 2.35 seconds, 320p, and a one-hour timeout per export; `ENCODING_TIMEOUT_MS` changes the timeout. Seven-minute stereo WAV fixtures retain 32 kHz PCM; longer fixtures use 16 kHz PCM to stay below the current input byte/memory guards. The tool accepts up to 900 seconds. They alternate initial silence and tones every 30 seconds. Short fixtures still exercise partial final chunks. JSON reports, reference/decoded PNGs, and layout screenshots survive the run; synthetic inputs and downloaded videos are temporary. `exports.json` is an incremental checkpoint, so a later failure cannot erase already verified exports. Only a final `verification.json` establishes completion of the lifecycle checks.
 
-For long exports, FFprobe checks every video packet against the absolute 30 fps timeline, not just average frame rate or container duration. Audio silence/tone markers check alignment every 30 seconds. Cover lyric pixels are compared to preview frames immediately before/after cues at 1, 2, 60, 120, 210, 300, and 419 seconds, when present. Browser seeks include late-timeline positions. Reactive-mode checks compare silent and sounding frames; the extended tool samples these every 30 seconds. These checks cover synthetic signal alignment; they are not a subjective music-quality listening evaluation.
+For long exports, FFprobe checks every video packet against the absolute 30 fps timeline, not just average frame rate or container duration. Audio silence/tone markers check alignment every 30 seconds. Cover lyric pixels are compared to preview frames immediately before/after cues at 1, 2, 60, 120, 210, 300, 419, 600, 720, and 899 seconds, when present. Browser seeks include late-timeline positions. Reactive-mode checks compare silent and sounding frames; the extended tool samples these every 30 seconds. These checks cover synthetic signal alignment; they are not a subjective music-quality listening evaluation.
 
 ## Recorded desktop results
 
@@ -53,7 +53,7 @@ The complete seven-minute Classic default 320p matrix passed on Apple M1, 16 GiB
 
 ## Compression and follow-up checks
 
-The initial seven-minute 720p Cover MP4 [failed at the 64 MiB encoded-part guard](../output/release/720p-before-fix/failure.json). Five-frame batches create more independent keyframes than the default 30-frame path. The encoder now uses H.264 CRF 30 at 720p, retaining CRF 23 at 320p and all memory guards. CRF 28 was an intermediate adjustment before the final full-length matrices. This trades some optional high-resolution compression quality for lower encoded storage; it does not guarantee that arbitrary high-detail artwork/text will fit. All six [short 720p reruns](../output/release/720p-short-fixed/verification.json) passed decoded pixels, codecs, audio and lifecycle checks after the change. Full-length follow-up results are recorded separately.
+The initial seven-minute 720p Cover MP4 [failed at the 64 MiB encoded-part guard](../output/release/720p-before-fix/failure.json). Five-frame batches create more independent keyframes than the default 30-frame path. The encoder now uses H.264 CRF 30 at 720p, retaining CRF 23 at 320p and all then-current memory guards. CRF 28 was an intermediate adjustment before the final full-length matrices. This trades some optional high-resolution compression quality for lower encoded storage; it does not guarantee that arbitrary high-detail artwork/text will fit. All six [short 720p reruns](../output/release/720p-short-fixed/verification.json) passed decoded pixels, codecs, audio and lifecycle checks after the change. Full-length follow-up results are recorded separately.
 
 The extended [reactive timeline evidence](../output/release/reactive-timeline/verification.json) checks seven-minute Spectrum and Lighting MP4 outputs with 14 aligned silence/tone visual markers each. The main desktop matrix checks both formats' audio/timestamp continuity, and the short 720p suite checks partial five-frame batches. The final production build and `bun run check` passed with 119 tests; [final UI evidence](../output/release/ui-final/verification.json) repeats the actual-file, settings, keyboard, theme, motion and mobile-layout checks against that build.
 
@@ -73,7 +73,7 @@ The [Full cover script](../scripts/verify-full-cover.mjs) uses a fixed 2.35-seco
 - [Latest 320p evidence](../output/full-cover-crisp/observations.json) repeated both formats after removing the details toggle and improving text/preview rendering. It also verified a 2× preview backing raster capped at 1920 pixels wide, populated Bengali/Latin song details, and import/discard of an old `showDetails: false` setting. No page errors or media POST/PUT/PATCH requests were observed. `bun run check` and `bun run build` passed for the integrated code; they were not rerun for this documentation update.
 - [Classic Cover MP4 regression](../output/crisp-classic-encoding/verification.json) passed a 71-frame short 320p export, decoded audio/playback, and lyric boundaries at frames 30 and 60 after normalising display-density preview references to export dimensions. This targeted run skipped recovery checks; it does not replace the earlier full lifecycle suites.
 
-LRC controls/preview were exercised, and shared renderer regressions cover lyric placement. The saved Full cover fixtures do not establish decoded lyric-cue pixel coverage. Full cover seven-minute exports at both resolutions, the complete pattern/framing/Bars/None matrix, latest typography checks at 720p, and physical Android/iPhone readability/memory/performance remain open in the [Full cover tracker](../TODO.md#completed-full-cover-layout-and-sharper-preview). Desktop density and viewport emulation are not physical-device evidence.
+LRC controls/preview were exercised, and shared renderer regressions cover lyric placement. The saved Full cover fixtures do not establish decoded lyric-cue pixel coverage. Full cover fifteen-minute exports at both resolutions, the complete pattern/framing/Bars/None matrix, latest typography checks at 720p, and physical Android/iPhone readability/memory/performance remain open in the [Full cover tracker](../TODO.md#completed-full-cover-layout-and-sharper-preview). Desktop density and viewport emulation are not physical-device evidence.
 
 ## Measurements and interpretation
 
@@ -93,6 +93,35 @@ No release or deployment is performed by these scripts. Changed local UI must be
 
 ## Outstanding physical-device gates
 
-No Android device was attached to ADB. iPhone device tooling was unavailable. Representative physical Android Chrome and iPhone Safari runs must record actual model, OS/browser, all-mode MP4/WebM seven-minute timing, foreground responsiveness, available memory observations, playback/download success, cancellation/retry, background interruption and repeated exports. Verify both resolution choices and practical artwork/audio limits, including retained output during another export.
+No Android device was attached to ADB. iPhone device tooling was unavailable. Representative physical Android Chrome and iPhone Safari runs must record actual model, OS/browser, all-mode MP4/WebM fifteen-minute timing, foreground responsiveness, available memory observations, playback/download success, cancellation/retry, background interruption and repeated exports. Verify both resolution choices and practical artwork/audio limits, including retained output during another export.
 
-The 64 MiB audio, 12 MiB/16-million-pixel/8192-side artwork, 20.80 MiB raw batch, 35.41 MiB offline PCM, 64 MiB encoded-part and 80 MiB output limits remain allocation guards. Retain them until physical-device measurements justify calibration. Phone support and a minimum supported hardware baseline remain release requirements, not completed claims.
+The 12 October runs used 64 MiB audio, 12 MiB artwork, 64 MiB encoded-part, and 80 MiB output guards. On 16 October 2026 these byte guards were doubled to 128/24/128/160 MiB respectively; LRC/JSON imports now allow 512/256 KiB. At that stage, duration, image dimensions, 20.80 MiB raw batches, and 35.41 MiB offline PCM were unchanged; the later fifteen-minute extension raises only the duration-dependent PCM bound to 75.79 MiB. Provisional [buffer/heap admission checks](MEDIA_PIPELINE_ARCHITECTURE.md#memory-admission-checks) can reject files below these maxima. Earlier runs do not establish larger-file or memory-policy safety. Phone support and a minimum supported hardware baseline remain release requirements, not completed claims.
+
+## Memory guard verification: 16 October 2026
+
+The integrated buffer/heap policy and doubled byte guards passed `bun run check` (142 tests) and `bun run build`. Regression coverage includes concurrent reservations, retained media/results, idle FFmpeg engine ownership, pressure rejection before allocation, cancellation/failure cleanup, and retry. These tests include mocks and do not measure actual native/worker memory.
+
+Final production-browser checks used Apple M1/16 GiB and Chrome 155.0.8059.80 with the single-threaded core 0.12.10:
+
+- All six short Classic mode/format combinations passed at [320p](../output/memory-limits/production-short/verification.json) and [720p](../output/memory-limits/720p/verification.json), including decoding, audio/lyric/visual timing, saved playback, cancellation, forced failure/retry, retained results, expiry, and cleanup. Neither matrix reported page errors or media uploads; clear left zero tracked object URLs.
+- Both short [Full cover outputs](../output/memory-limits/full-cover/observations.json) passed real WASM export, native decoding, browser playback, reactive bars, layout/settings checks, and narrow-viewport checks, with no page errors or uploads. Viewport emulation is not physical-device proof.
+- One [seven-minute Spectrum MP4 at 320p](../output/memory-limits/production-7min/verification.json) completed in 48.342 seconds with 12,600 frames, full decoding, audio/visual markers, playback/seeking, expiry, and cleanup. Recovery scenarios were skipped in this long run and covered by the short suites. It sampled 171.8 MiB peak JS heap and 1.59 GiB aggregate browser RSS against a 0.85 GiB baseline. RSS includes browser/GPU processes; these are observations rather than a memory cap or portable performance guarantee.
+- Native browser [input-loader boundary checks](../output/memory-limits/native-boundaries.json) accepted exact 128 MiB WAV and 24 MiB PNG files and rejected files one byte over. These fixtures used a two-second WAV padded with a JUNK chunk and a tiny PNG with trailing padding; they establish byte-boundary behavior, not maximum decoded-media workload safety. Simulated heap/device pressure rejected safely; retry and missing-memory-API fallback passed.
+
+Evidence remains local under ignored `output/memory-limits/`. The larger byte guards and admission policy have not been deployed. Maximum-size encoded outputs, large real music/artwork combinations, the complete full-length layout/mode/format matrix under this policy, repeated-export memory growth, and physical Android/iPhone calibration remain open under [TODO item 95](../TODO.md#follow-up-larger-files-and-memory-admission).
+
+## Fifteen-minute duration verification: 16 October 2026
+
+The duration limit is now 900 seconds, shared by input validation, export batching, UI hints, and ±900000 ms LRC offsets through [media limits](../lib/media-limits.ts). Offline export PCM is bounded to 901 seconds of mono 22050 Hz float samples (75.79 MiB), including one second of allocation headroom. Input byte limits, raw frame batches, encoded-part/output guards, and buffer/heap admission thresholds remain in effect; individually valid long files can still exceed the memory policy.
+
+Validation requests a 22050 Hz AudioContext to bound duration-check PCM independently of the output device, with a native-rate fallback for NotSupportedError. The decoded data is used only to validate the file; native preview and FFmpeg receive the original source audio. [AudioContext options](https://developer.mozilla.org/en-US/docs/Web/API/AudioContext/AudioContext) describe the requested rate and unsupported-rate error. Fallback behavior has a mocked regression; the browser runs below used the requested 22050 Hz rate.
+
+On Apple M1/16 GiB with Chrome 155.0.8059.80 and single-thread core 0.12.10, the production app passed:
+
+- [Exact-duration UI input checks](../output/duration-15min/input-boundaries.json): a real 900-second AAC/M4A was accepted, a 900.01-second file was rejected, and selecting the valid file again succeeded. Both normal and unavailable device-memory/heap APIs were exercised, with no page errors. The existing loader clears the prior input at replacement start; this check does not claim input preservation after rejection.
+- [Fifteen-minute Spectrum MP4 at 320p](../output/duration-15min/spectrum-mp4/verification.json): 27,000 frames, 900 seconds, full decoding, all packet timestamps, 30 recurring audio/visual markers, late playback/seeking, expiry, and clear/URL cleanup. Export took 112.228 seconds and produced 29,559,504 bytes. It sampled 212.6 MiB peak JS heap and 1.87 GiB aggregate browser RSS against a 0.83 GiB baseline.
+- [Fifteen-minute Cover WebM at 320p](../output/duration-15min/cover-webm/verification.json): 27,000 frames, 900.004 seconds, full decoding, all packet timestamps, 30 audio markers, lyric-boundary pixels through 899 seconds, playback/seeking, expiry, and clear/URL cleanup. Export took 219.164 seconds and produced 30,798,070 bytes. Neither full-length run reported page errors or media uploads; clear left zero tracked URLs. Recovery scenarios were skipped in these long runs and are checked separately with short fixtures.
+
+These are functional desktop observations, not portable speed/memory guarantees. The browser RSS figures include browser/GPU processes and are not constrained by the application's estimated-buffer admission threshold. Real device memory/heap APIs remain incomplete hints. The complete fifteen-minute all-layout/mode/format matrix at 720p/320p, large-media combinations, and physical Android/iPhone calibration remain open under [TODO item 96](../TODO.md#follow-up-fifteen-minute-duration). Earlier seven-minute evidence does not close these gates.
+
+The browser acceptance tool now supports ENCODING_DURATION=900, includes late cues at 600/720/899 seconds, uses 16 kHz stereo WAV fixtures for longer runs, and derives its native decoded-PCM capture allowance from the requested duration. It still verifies the complete audio/video timeline. Final integrated checks passed 144 tests and the production build passed. The [final short production recovery suite](../output/duration-15min/recovery-short/verification.json) passed all six Classic mode/format exports, cancellation, forced load failure/retry, previous-result retention, expiry, and clear/URL cleanup, with no page errors or media uploads. No deployment was performed.

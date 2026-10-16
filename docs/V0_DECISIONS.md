@@ -1,10 +1,10 @@
 # Audioframe v0 Decisions
 
-Status: Locked product decisions, agreed on 12 October 2026.
+Status: Locked product decisions, agreed on 12 October 2026; duration extended to fifteen minutes on 16 October 2026.
 
 Audioframe converts an audio file and cover artwork into a video with optional text, lyrics, and audio-reactive visualisations. v0 runs media processing locally in the browser, supports desktop and capable mobile devices, and provides local downloads without application accounts.
 
-These decisions define the target product. As of 12 October 2026, `/create` implements real local-media validation, playback, Classic/Full cover Canvas composition, lyrics, settings, bounded MP4/WebM encoding and generated-video downloads. The complete seven-minute Classic desktop matrix is verified at 320p and 720p. Full cover has short export evidence at both resolutions; its full-length/pattern/lyric matrix and physical-device benchmarks remain pending. `/prototype` provides the separate simulated experience. See the [implementation tracker](../TODO.md) and [release validation](RELEASE_VALIDATION.md) for evidence and release gaps.
+These decisions define the target product. As of 16 October 2026, `/create` implements real local-media validation, playback, Classic/Full cover Canvas composition, lyrics, settings, bounded MP4/WebM encoding and generated-video downloads. The historical seven-minute Classic desktop matrix is verified at 320p and 720p; current fifteen-minute production checks cover Spectrum MP4 and Cover WebM at 320p. Full cover has short export evidence at both resolutions; its full-length/pattern/lyric matrix and physical-device benchmarks remain pending. See the [implementation tracker](../TODO.md) and [release validation](RELEASE_VALIDATION.md) for evidence and release gaps.
 
 ## User flow
 
@@ -36,7 +36,7 @@ Users must keep the app open and in the foreground during export. Mobile compati
 | Optional text   | Song title, album name, artists, and website     |
 | Optional lyrics | Timed LRC or plain text                          |
 
-Validate actual media contents, decodability, and duration rather than relying on filenames. Audio duration must not exceed seven minutes. MP4 input contributes its audio track only; its video is not used in the composition.
+Validate actual media contents, decodability, and duration rather than relying on filenames. Audio duration must not exceed fifteen minutes. MP4 input contributes its audio track only; its video is not used in the composition.
 
 Timed LRC lyrics support synchronised display. Plain lyrics can appear as static text. Automatic transcription and lyric timing are outside v0.
 
@@ -57,7 +57,7 @@ Full cover shows nonempty song title, artist, album, and website at the top, and
 ## Output
 
 - Landscape video at 30 fps, with 320p (568 × 320) as the default and an optional 720p (1280 × 720). Higher resolution takes longer to export.
-- Maximum duration of seven minutes, matching the input audio duration.
+- Maximum duration of fifteen minutes, matching the input audio duration.
 - MP4 with H.264 video and AAC audio.
 - WebM with VP8 video and Opus audio.
 - Include the original audio content. Audio may be re-encoded for output compatibility.
@@ -94,11 +94,11 @@ Future options include direct YouTube uploads, application accounts, AWS renderi
 
 Release requires evidence of:
 
-- Complete seven-minute exports in both MP4 and WebM, with the specified dimensions, frame rate, and codecs, for Classic and Full cover compositions.
+- Complete fifteen-minute exports in both MP4 and WebM, with the specified dimensions, frame rate, and codecs, for Classic and Full cover compositions.
 - Audio and visual synchronisation throughout the exported video, including timed lyrics when supplied.
 - Acceptable memory use and rendering performance on representative desktop, Android, and iPhone browsers.
 - Working cancellation, failure handling, and temporary resource cleanup.
 - Successful local downloads that play with audio on the tested devices.
 - Settings import and export that preserve the supported preferences and reject invalid presets.
 
-These are acceptance requirements, not claims of complete release verification. The input/preview stage currently applies conservative bounds of 64 MiB for audio and 12 MiB, 16 million pixels, and 8192 pixels per side for artwork. Desktop boundary fixtures have been checked; the supported device baseline, mobile calibration, encoding path, and complete export memory budget still require benchmarking.
+These are acceptance requirements, not claims of complete release verification. The input/preview stage currently applies conservative bounds of 128 MiB for audio and 24 MiB, 16 million pixels, and 8192 pixels per side for artwork. The byte guards were doubled on 16 October 2026 with provisional [buffer/heap admission checks](MEDIA_PIPELINE_ARCHITECTURE.md#memory-admission-checks). Earlier desktop boundary evidence predates that change; the supported device baseline, mobile calibration, and complete export memory budget still require benchmarking.

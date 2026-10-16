@@ -1,12 +1,14 @@
 import { readFile } from '@/lib/browser-files'
 import { parseSettings, settingsFileLimit } from './settings'
 import { parseLrc } from './lyrics'
+import { assertMemoryAvailable } from '@/lib/memory-budget'
 
-const MAX_TEXT_BYTES = 256 * 1024
+const MAX_TEXT_BYTES = 512 * 1024
 
 async function readText(file: File, extension: RegExp, signal: AbortSignal, maxBytes = MAX_TEXT_BYTES) {
   if (!extension.test(file.name)) throw new Error('Choose the supported file type.')
   if (!file.size || file.size > maxBytes) throw new Error(`Choose a non-empty text file up to ${maxBytes / 1024} KiB.`)
+  assertMemoryAvailable({ buffers: file.size * 4, heap: file.size * 4 })
   const text = await readFile(file, 'text', signal)
   signal.throwIfAborted()
   return text

@@ -1,4 +1,5 @@
 import { ffmpegClient } from '@/lib/ffmpeg'
+import { retainMemory } from '@/lib/memory-budget'
 import type { EditorPreferences } from './types'
 import type { EncodingProgress } from './encode'
 import type { VideoResolution } from './resolution'
@@ -8,6 +9,7 @@ export type ExportInput = {
   preferences: EditorPreferences
   artwork: HTMLImageElement
   audioURL: string
+  audioBytes: number
   duration: number
 }
 export type VideoResult = {
@@ -62,7 +64,14 @@ async function encode(input: ExportInput, signal: AbortSignal, report: (work: En
   signal.throwIfAborted()
   const snapshot = await prepareComposition(input.preferences, input.artwork)
   signal.throwIfAborted()
-  return encodeVideo({ snapshot, audioURL: input.audioURL, duration: input.duration, signal, report })
+  return encodeVideo({
+    snapshot,
+    audioURL: input.audioURL,
+    audioBytes: input.audioBytes,
+    duration: input.duration,
+    signal,
+    report
+  })
 }
 const browserResources = {
   now: () => Date.now(),
@@ -81,12 +90,15 @@ export function createVideoExportController(encoder = encode, resources = browse
   let generation = 0
   let active: AbortController | null = null
   let stopTimer: (() => void) | undefined
+  let releaseResultMemory: (() => void) | undefined
   const listeners = new Set<() => void>()
   const publish = (next: VideoExportState) => {
     state = next
     listeners.forEach((listener) => listener())
   }
   const release = () => {
+    releaseResultMemory?.()
+    releaseResultMemory = undefined
     stopTimer?.()
     stopTimer = undefined
     if (state.result?.url) resources.revokeURL(state.result.url)
@@ -128,6 +140,7 @@ export function createVideoExportController(encoder = encode, resources = browse
     // Freeze user preferences before any async work; artwork is locked by the caller.
     const selected = { ...input, preferences: structuredClone(input.preferences) }
     publish({ ...state, status: 'running', work: { stage: 'prepare', progress: 0 }, error: null })
+    let releaseNextMemory: (() => void) | undefined
     try {
       const blob = await encoder(selected, abort.signal, (work) => {
         if (current === generation)
@@ -135,8 +148,11 @@ export function createVideoExportController(encoder = encode, resources = browse
       })
       if (current !== generation || abort.signal.aborted) return
       if (!blob.size) throw new Error('The encoder produced an empty video.')
+      releaseNextMemory = retainMemory(blob.size)
       const url = resources.createURL(blob)
       release()
+      releaseResultMemory = releaseNextMemory
+      releaseNextMemory = undefined
       const now = resources.now()
       publish({
         ...state,
@@ -166,6 +182,7 @@ export function createVideoExportController(encoder = encode, resources = browse
             : `Video export failed during ${state.work.stage} (${Math.round(state.work.progress)}%): ${String(error)}. Try again.`
       })
     } finally {
+      releaseNextMemory?.()
       if (current === generation) active = null
     }
   }

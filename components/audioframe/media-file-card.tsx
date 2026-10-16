@@ -10,6 +10,7 @@ import { mediaInputAccept } from '@/lib/audioframe-design'
 import { IconButton } from './icon-button'
 import { StatusBadge, Notice } from './status'
 import { cn } from '@/lib/utils'
+import { MAX_AUDIO_MINUTES } from '@/lib/media-limits'
 
 type SelectedMedia = { name: string; detail?: string; thumbnail?: ReactNode }
 /** File picker only. The caller validates/decodes media and owns any object URLs. */
@@ -39,7 +40,7 @@ export function MediaFileCard({
   const [dragging, setDragging] = useState(false)
   const title = kind === 'audio' ? 'Audio' : 'Artwork'
   const Icon = kind === 'audio' ? MusicNoteIcon : ImageIcon
-  const hint = kind === 'audio' ? 'MP3, M4A, WAV, MP4 · Up to 7 minutes' : 'JPG or PNG'
+  const hint = kind === 'audio' ? `MP3, M4A, WAV, MP4 · Up to ${MAX_AUDIO_MINUTES} minutes` : 'JPG or PNG'
   const busy = disabled || checking
   function choose(file: File | undefined) {
     setDragging(false)

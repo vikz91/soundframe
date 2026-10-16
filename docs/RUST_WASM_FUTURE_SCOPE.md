@@ -1,19 +1,19 @@
 # Future scope: Rust/WASM and browser media efficiency
 
-Date: 12 October 2026.
+Date: 12 October 2026. Updated: 16 October 2026 for the larger byte guards, memory admission policy, and fifteen-minute duration.
 
 Status: Analysis backlog. No Rust module, WebCodecs path, or performance improvement is implemented or verified by this document. This evaluation does not replace the [locked media architecture](MEDIA_PIPELINE_ARCHITECTURE.md) or the [v0 product decisions](V0_DECISIONS.md).
 
 ## Objective
 
-Identify measured opportunities to reduce export duration, CPU work, and peak memory while retaining local browser processing, seven-minute audio, 320p/720p at 30 fps, MP4/WebM output, deterministic composition timing, and cancellation/cleanup behavior. Evaluate small Rust modules compiled to WASM against simpler TypeScript optimisations and browser-native media APIs before selecting an implementation.
+Identify measured opportunities to reduce export duration, CPU work, and peak memory while retaining local browser processing, fifteen-minute audio, 320p/720p at 30 fps, MP4/WebM output, deterministic composition timing, and cancellation/cleanup behavior. Evaluate small Rust modules compiled to WASM against simpler TypeScript optimisations and browser-native media APIs before selecting an implementation.
 
 ## Current implementation and evidence
 
 - [FFmpeg](../lib/ffmpeg.ts) already runs a lazy, single-threaded WASM core in its built-in worker. Rust orchestration alone would not replace its codec work or establish faster encoding.
-- [Offline analysis](../lib/editor/offline-analysis.ts) uses bounded mono 22050 Hz PCM, reusable buffers, a 1024-sample Blackman window, and an absolute-time JavaScript FFT. Analysed seven-minute exports evaluate 12,600 frames. Sine/cosine coefficients are recalculated inside the FFT loops for every frame.
+- [Offline analysis](../lib/editor/offline-analysis.ts) uses bounded mono 22050 Hz PCM, reusable buffers, a 1024-sample Blackman window, and an absolute-time JavaScript FFT. Analysed fifteen-minute exports evaluate 27,000 frames. Sine/cosine coefficients are recalculated inside the FFT loops for every frame.
 - [Analysis selection](../lib/editor/types.ts) skips analysis for Classic Cover and Full cover None. Classic Lighting requests the same FFT source even though the [painter](../lib/editor/composition.ts) only consumes waveform RMS for that effect. Native preview uses the browser's [Web Audio analyser](../lib/editor/audio-analysis.ts), with reusable sample buffers.
-- [Canvas export](../lib/editor/encode.ts) reads each frame with `getImageData`, copies pixels into a batch, transfers through the FFmpeg wrapper, and encodes a separate video part. Seven minutes requires 420 video batches at 320p or 2,520 at 720p; the smaller 720p batches retain the existing raw-byte guard. The wrapper copies caller-owned bytes before worker transfer and the encoder reads each encoded part to account for its size.
+- [Canvas export](../lib/editor/encode.ts) reads each frame with `getImageData`, copies pixels into a batch, transfers through the FFmpeg wrapper, and encodes a separate video part. Fifteen minutes requires 900 video batches at 320p or 5,400 at 720p; the smaller 720p batches retain the existing raw-byte guard. The wrapper copies caller-owned bytes before worker transfer and the encoder reads each encoded part to account for its size.
 - The [release validation report](RELEASE_VALIDATION.md) records seven-minute Classic desktop exports at 50.762–60.528 seconds for 320p MP4 and 106.312–133.297 seconds for 320p WebM. The 720p format matrices overlapped, so their recorded durations are functional-validation observations rather than isolated performance benchmarks. These results do not isolate FFT, Canvas, transfer, or codec cost and do not prove physical-mobile capacity or a Rust speedup.
 
 ## Candidate assessment
@@ -54,7 +54,7 @@ SIMD or threading would be separate benchmark variants, with explicit capability
 
 1. **Attribute cost first.** Record preparation/module loading, audio decode, FFT/waveform/RMS, Canvas painting, pixel readback, batch copying/transfer, per-part encoding/size accounting, and final assembly separately. Use bounded aggregated measurements so instrumentation does not dominate the hot loop.
 2. **Compare incremental variants.** Establish the unchanged baseline, then test simpler TypeScript improvements, Rust analysis, and encoding alternatives independently. Define the desired end-to-end improvement and acceptable memory/startup/bundle tradeoffs before interpreting results.
-3. **Run isolated workloads.** Use identical settings and fixtures, cold and warm runs, repeated measurements, and no overlapping format matrices. Include short/final-partial exports and seven-minute Classic Cover/Spectrum/Lighting plus Full cover Bars/None, both resolutions and formats. Cover/None provides a control without FFT cost.
+3. **Run isolated workloads.** Use identical settings and fixtures, cold and warm runs, repeated measurements, and no overlapping format matrices. Include short/final-partial exports and fifteen-minute Classic Cover/Spectrum/Lighting plus Full cover Bars/None, both resolutions and formats. Cover/None provides a control without FFT cost.
 4. **Include real devices and music.** Record desktop, representative physical Android Chrome, and iPhone Safari results with device, OS/browser, core/module version, codec settings, thread configuration, and input sizes. Viewport emulation does not close physical-device gates.
 5. **Measure total cost.** Report end-to-end duration, per-stage time, UI heartbeat, available heap/WASM/browser memory observations, repeated-export growth, and cold-load download/initialisation cost. Label unavailable measurements and distinguish allocation guards from actual peaks.
 6. **Verify correctness and lifecycle.** Check numerical analysis against the current implementation using defined tolerances and silence/impulse/tone/real-music fixtures. Preserve the 22050 Hz source, 1024-sample window alignment, Blackman coefficients, FFT scaling, decibel mapping, waveform quantisation, silence padding, and frame-index clock. Verify decoded frame count/timestamps, audio synchronisation, lyrics, bar/lighting behavior, seek/chunk boundaries, saved playback, local-only processing, cancellation/retry, failed loads, retained previous results, expiry, and resource cleanup.

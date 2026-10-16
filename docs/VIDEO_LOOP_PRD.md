@@ -12,7 +12,7 @@ Success means the user selects local clips, sees the complete song timeline in p
 
 ## Scope and existing behavior
 
-This extends the local converter; it does not change the seven-minute audio limit, default 320p or optional 720p resolution, 30 fps output, MP4/WebM downloads, or local-only processing. Existing artwork-based projects remain the default.
+This extends the local converter; it does not change the fifteen-minute audio limit, default 320p or optional 720p resolution, 30 fps output, MP4/WebM downloads, or local-only processing. Existing artwork-based projects remain the default.
 
 The current [composition painter](../lib/editor/composition.ts) draws artwork and overlays from an absolute frame index. The [encoder](../lib/editor/encode.ts) synchronously paints bounded frame batches before sequential encoding. Video backgrounds require a new prepared-frame source; existing MP4 audio input does not supply background video automatically.
 
@@ -126,7 +126,7 @@ Do not weaken the existing raw-frame, encoded-parts, or final-output allocation 
 | Lifecycle and settings | Verify replacement/cancellation/stale loads, mode changes, audio revalidation, clear/disposal, export failure/retry, retained prior result, output expiry, legacy presets, media-free round trips, and missing-media recovery.                                           |
 | Browser and privacy    | Check narrow layouts, keyboard/focus controls, reduced motion, no media uploads, decoder capability failures, bounded preparation/export allocations, responsive cancellation, and representative physical devices.                                                      |
 
-Use short targeted fixtures first, then full seven-minute video-background checks for both output formats and resolutions, including recurring loop/lyric/audio markers. Test different source dimensions/frame rates and orientation; support claims require real results, not mocked decoders. Run `bun run check` and `bun run build` after implementation. Extend the existing browser acceptance tooling and record codec/device/limits, measurements, and blockers. Unverified device/codec combinations must remain explicitly unverified or unsupported.
+Use short targeted fixtures first, then full fifteen-minute video-background checks for both output formats and resolutions, including recurring loop/lyric/audio markers. Test different source dimensions/frame rates and orientation; support claims require real results, not mocked decoders. Run `bun run check` and `bun run build` after implementation. Extend the existing browser acceptance tooling and record codec/device/limits, measurements, and blockers. Unverified device/codec combinations must remain explicitly unverified or unsupported.
 
 ## Deferred work and unresolved calibration
 

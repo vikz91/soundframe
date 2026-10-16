@@ -12,7 +12,7 @@ import { createHash } from 'node:crypto'
 
 const duration = Number(process.env.ENCODING_DURATION ?? 2.35)
 const resolution = process.env.ENCODING_RESOLUTION ?? '320p'
-assert.ok(Number.isFinite(duration) && duration >= 2.35 && duration <= 420, 'duration must be 2.35–420 seconds')
+assert.ok(Number.isFinite(duration) && duration >= 2.35 && duration <= 900, 'duration must be 2.35–900 seconds')
 assert.ok(['320p', '720p'].includes(resolution), 'resolution must be 320p or 720p')
 const [width, height] = resolution === '720p' ? [1280, 720] : [568, 320]
 const scale = width / 568
@@ -24,7 +24,7 @@ const formats = (process.env.ENCODING_FORMATS ?? 'MP4,WebM').split(',')
 assert.ok(modes.length && modes.every((mode) => ['Cover', 'Spectrum', 'Lighting'].includes(mode)))
 assert.ok(formats.length && formats.every((format) => ['MP4', 'WebM'].includes(format)))
 assert.ok(Number.isFinite(timeout) && timeout > 0, 'timeout must be positive milliseconds')
-const boundaryTimes = [1, 2, 60, 120, 210, 300, 419].filter((time) => time < duration)
+const boundaryTimes = [1, 2, 60, 120, 210, 300, 419, 600, 720, 899].filter((time) => time < duration)
 const referenceFrames = [
   ...new Set(boundaryTimes.flatMap((time) => [time * 30 - 1, time * 30]).concat(Math.ceil(duration * 30) - 1))
 ]
@@ -43,12 +43,16 @@ const { chromium } = await import(
 const evidence = resolve(process.env.ENCODING_EVIDENCE_DIR ?? 'output/encoding')
 const fixtures = await mkdtemp(join(tmpdir(), 'audioframe-encoding-'))
 await mkdir(evidence, { recursive: true })
-const native = (binary, args) => execFileSync(binary, ['-v', 'error', ...args], { maxBuffer: 64 * 1024 * 1024 })
+// Native audio verification captures bounded mono float PCM through the complete timeline.
+const nativeOutputLimit = Math.max(64 * 1024 * 1024, Math.ceil((duration + 1) * 22050 * 4) + 1024 * 1024)
+const native = (binary, args) => execFileSync(binary, ['-v', 'error', ...args], { maxBuffer: nativeOutputLimit })
+// Keep full-length stereo WAV fixtures below the input byte guard without changing short/legacy fixtures.
+const fixtureSampleRate = duration > 420 ? 16000 : 32000
 native('ffmpeg', [
   '-f',
   'lavfi',
   '-i',
-  String.raw`aevalsrc=0.35*sin(2*PI*440*t)*gte(mod(t\,30)\,0.5)|0.3*sin(2*PI*660*t)*gte(mod(t\,30)\,0.5):s=32000:d=${duration}`,
+  String.raw`aevalsrc=0.35*sin(2*PI*440*t)*gte(mod(t\,30)\,0.5)|0.3*sin(2*PI*660*t)*gte(mod(t\,30)\,0.5):s=${fixtureSampleRate}:d=${duration}`,
   '-y',
   join(fixtures, 'audio.wav')
 ])
@@ -159,6 +163,8 @@ try {
     hardwareConcurrency: navigator.hardwareConcurrency,
     deviceMemoryGiB: navigator.deviceMemory ?? null
   }))
+  // Capability probing is asynchronous; setInputFiles can bypass a disabled input.
+  await page.locator('input[type=file]:enabled').nth(1).waitFor({ state: 'attached' })
   await page.locator('input[type=file]').nth(0).setInputFiles(join(fixtures, 'audio.wav'))
   await page.locator('input[type=file]').nth(1).setInputFiles(join(fixtures, 'artwork.png'))
   await page.getByRole('button', { name: 'Create your frame', exact: true }).click()
